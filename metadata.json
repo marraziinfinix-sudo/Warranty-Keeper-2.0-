@@ -1,0 +1,5 @@
+{
+  "name": "Warranty Keeper (Ver 2.0)",
+  "description": "An application to store and manage customer and product warranty information. All data is saved locally in your browser.",
+  "requestFramePermissions": []
+}
