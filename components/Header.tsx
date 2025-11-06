@@ -1,25 +1,19 @@
 
 import React from 'react';
-import { PlusIcon, SettingsIcon, ExportIcon } from './icons/Icons';
+import { PlusIcon, SettingsIcon } from './icons/Icons';
 
 interface HeaderProps {
     onAddNew: () => void;
+    onSettingsClick: () => void;
     searchTerm: string;
     onSearchChange: (term: string) => void;
-    onExport: () => void;
-    isExporting: boolean;
-    isGoogleSheetConfigured: boolean;
-    onOpenSettings: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
-    onAddNew, 
+    onAddNew,
+    onSettingsClick, 
     searchTerm, 
     onSearchChange, 
-    onExport, 
-    isExporting, 
-    isGoogleSheetConfigured, 
-    onOpenSettings 
 }) => {
     return (
         <header className="bg-white shadow-md sticky top-0 z-10">
@@ -45,23 +39,10 @@ const Header: React.FC<HeaderProps> = ({
                         <span className="hidden sm:inline">Register New Warranty</span>
                         <span className="sm:hidden">New</span>
                     </button>
-                    {isGoogleSheetConfigured && (
-                        <button
-                            onClick={onExport}
-                            disabled={isExporting}
-                            className="flex items-center gap-2 bg-brand-success text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                            title="Export all records to Google Sheet"
-                        >
-                            <ExportIcon />
-                            <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export to Sheet'}</span>
-                            <span className="sm:hidden">Export</span>
-                        </button>
-                    )}
                     <button
-                        onClick={onOpenSettings}
-                        className="p-2.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+                        onClick={onSettingsClick}
+                        className="p-2 text-gray-500 rounded-full hover:bg-gray-100 hover:text-brand-primary transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary"
                         aria-label="Settings"
-                        title="Google Sheet Settings"
                     >
                         <SettingsIcon />
                     </button>

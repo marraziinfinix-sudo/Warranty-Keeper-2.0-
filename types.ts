@@ -31,3 +31,7 @@ export enum WarrantyStatus {
     ExpiringSoon = 'Expiring Soon',
     Expired = 'Expired'
 }
+
+export interface AppSettings {
+  expiryReminderDays: number;
+}

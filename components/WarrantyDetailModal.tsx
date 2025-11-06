@@ -1,11 +1,12 @@
 import React from 'react';
-import { Warranty, WarrantyStatus, Product } from '../types';
+import { Warranty, WarrantyStatus, Product, AppSettings } from '../types';
 import { getWarrantyStatusInfo, formatDate, formatPhoneNumberForWhatsApp, formatWarrantyText, calculateExpiryDate, generateShareMessage, getServiceText } from '../utils/warrantyUtils';
 import { EmailIcon, WhatsAppIcon } from './icons/Icons';
 
 interface WarrantyDetailModalProps {
   warranty: Warranty;
   onClose: () => void;
+  settings: AppSettings;
 }
 
 const getBuildingTypeText = (warranty: Warranty): string => {
@@ -22,8 +23,8 @@ const getBuildingTypeText = (warranty: Warranty): string => {
     }
 }
 
-const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({ warranty, onClose }) => {
-  const { status } = getWarrantyStatusInfo(warranty);
+const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({ warranty, onClose, settings }) => {
+  const { status } = getWarrantyStatusInfo(warranty, settings.expiryReminderDays);
   const isExpired = status === WarrantyStatus.Expired;
   
   const installationExpiryDate = calculateExpiryDate(warranty.installDate, warranty.installationWarrantyPeriod, warranty.installationWarrantyUnit);

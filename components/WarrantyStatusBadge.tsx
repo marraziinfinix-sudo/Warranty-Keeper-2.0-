@@ -1,13 +1,12 @@
 import React from 'react';
-import { WarrantyStatus, Warranty } from '../types';
-import { getWarrantyStatusInfo } from '../utils/warrantyUtils';
+import { WarrantyStatus } from '../types';
 
 interface WarrantyStatusBadgeProps {
-  warranty: Warranty;
+  status: WarrantyStatus;
+  color: string;
 }
 
-const WarrantyStatusBadge: React.FC<WarrantyStatusBadgeProps> = ({ warranty }) => {
-  const { status, color } = getWarrantyStatusInfo(warranty);
+const WarrantyStatusBadge: React.FC<WarrantyStatusBadgeProps> = ({ status, color }) => {
 
   return (
     <span className={`px-2.5 py-1 text-xs font-semibold text-white rounded-full ${color}`}>

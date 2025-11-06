@@ -63,7 +63,7 @@ export const getEarliestProductExpiry = (products: Product[]): Date | null => {
     return new Date(Math.min.apply(null, expiryDates.map(d => d.getTime())));
 }
 
-export const getWarrantyStatusInfo = (warranty: Warranty): WarrantyStatusInfo => {
+export const getWarrantyStatusInfo = (warranty: Warranty, expiryReminderDays: number): WarrantyStatusInfo => {
     const allExpiryDates: Date[] = [];
 
     if (warranty.products && warranty.products.length > 0) {
@@ -92,14 +92,14 @@ export const getWarrantyStatusInfo = (warranty: Warranty): WarrantyStatusInfo =>
     today.setHours(0, 0, 0, 0); 
     latestExpiryDate.setHours(0, 0, 0, 0);
 
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(today.getDate() + 30);
-    thirtyDaysFromNow.setHours(0, 0, 0, 0);
+    const reminderDate = new Date();
+    reminderDate.setDate(today.getDate() + expiryReminderDays);
+    reminderDate.setHours(0, 0, 0, 0);
 
     if (latestExpiryDate < today) {
         return { status: WarrantyStatus.Expired, color: 'bg-brand-danger', expiryDate: latestExpiryDate };
     }
-    if (latestExpiryDate <= thirtyDaysFromNow) {
+    if (latestExpiryDate <= reminderDate) {
         return { status: WarrantyStatus.ExpiringSoon, color: 'bg-brand-warning', expiryDate: latestExpiryDate };
     }
     return { status: WarrantyStatus.Active, color: 'bg-brand-success', expiryDate: latestExpiryDate };
@@ -249,4 +249,55 @@ export const triggerShare = (
             triggerWhatsApp();
         }
     }
+};
+
+const escapeCSV = (value: any): string => {
+    const stringValue = String(value ?? '');
+    if (/[",\n]/.test(stringValue)) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+};
+
+
+export const exportWarrantiesToCSV = (warranties: Warranty[]) => {
+  const headers = [
+    'id', 'customerName', 'phoneNumber', 'email', 'servicesProvided',
+    'installDate', 'installationWarrantyPeriod', 'installationWarrantyUnit',
+    'postcode', 'district', 'state', 'buildingType', 'otherBuildingType',
+    'productName', 'serialNumber', 'purchaseDate', 'productWarrantyPeriod', 'productWarrantyUnit'
+  ];
+
+  const rows = warranties.flatMap(w => {
+    const commonData = [
+      w.id, w.customerName, w.phoneNumber, w.email, getServiceText(w.servicesProvided),
+      w.installDate ? formatDate(w.installDate) : '', w.installationWarrantyPeriod, w.installationWarrantyUnit,
+      w.postcode, w.district, w.state, w.buildingType, w.otherBuildingType || ''
+    ];
+
+    if (!w.products || w.products.length === 0) {
+      const emptyProductData = ['', '', '', '', ''];
+      return [[...commonData, ...emptyProductData].map(escapeCSV).join(',')];
+    }
+
+    return w.products.map(p => {
+      const productData = [
+        p.productName, p.serialNumber, formatDate(p.purchaseDate), p.productWarrantyPeriod, p.productWarrantyUnit
+      ];
+      return [...commonData, ...productData].map(escapeCSV).join(',');
+    });
+  });
+
+  const csvContent = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.setAttribute('download', `warranties_export_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };

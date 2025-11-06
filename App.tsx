@@ -1,47 +1,24 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Warranty, Product } from './types';
+import { Warranty, Product, AppSettings, WarrantyStatus } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyList from './components/WarrantyList';
 import Header from './components/Header';
 import WarrantyPreviewModal from './components/WarrantyPreviewModal';
-import GoogleSheetSetup from './components/GoogleSheetSetup';
-import { triggerShare } from './utils/warrantyUtils';
-
-// Type for flattened data for Google Sheet
-interface SheetRow {
-  id: string;
-  customerName: string;
-  phoneNumber: string;
-  email: string;
-  productName: string;
-  serialNumber: string;
-  purchaseDate: string;
-  installDate?: string;
-  productWarrantyPeriod: number;
-  productWarrantyUnit: 'days' | 'weeks' | 'months' | 'years';
-  installationWarrantyPeriod: number;
-  installationWarrantyUnit: 'days' | 'weeks' | 'months' | 'years';
-  state: string;
-  district: string;
-  postcode: string;
-  buildingType: 'home' | 'office' | 'others';
-  otherBuildingType?: string;
-}
+import { triggerShare, getWarrantyStatusInfo, exportWarrantiesToCSV } from './utils/warrantyUtils';
+import SettingsModal from './components/SettingsModal';
 
 const App: React.FC = () => {
   const [warranties, setWarranties] = useLocalStorage<Warranty[]>('warranties', []);
+  const [settings, setSettings] = useLocalStorage<AppSettings>('appSettings', { expiryReminderDays: 30 });
   const [formSeedData, setFormSeedData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [previewData, setPreviewData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // States for Google Sheet integration
-  const [googleSheetUrl, setGoogleSheetUrl] = useLocalStorage<string>('googleSheetUrl', '');
-  const [isSheetSetupOpen, setIsSheetSetupOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportMessage, setExportMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
+  const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
 
   // Auto-migrate old data structure to new one
   useEffect(() => {
@@ -167,131 +144,96 @@ const App: React.FC = () => {
       setPreviewData(null);
   };
 
-  const handleExport = async () => {
-    if (!googleSheetUrl) {
-      alert("Please set up your Google Sheet URL in Settings first.");
-      return;
-    }
-
-    setIsExporting(true);
-    setExportMessage(null);
-
-    try {
-      // 1. Fetch existing data to know whether to add or update
-      const getResponse = await fetch(googleSheetUrl);
-      if (!getResponse.ok) throw new Error('Failed to fetch from Google Sheet. Check URL and script permissions.');
-      const remoteData: SheetRow[] = await getResponse.json();
-      const remoteIds = new Set(remoteData.map(row => row.id));
-
-      // 2. Flatten local data into one row per product
-      const flattenedWarranties: SheetRow[] = warranties.flatMap(w => {
-        if (!w.products || w.products.length === 0) {
-          // Create a row for service-only warranties
-          return [{
-            id: w.id,
-            customerName: w.customerName,
-            phoneNumber: w.phoneNumber,
-            email: w.email,
-            productName: 'N/A - Service Only',
-            serialNumber: 'N/A',
-            purchaseDate: '',
-            installDate: w.installDate || '',
-            productWarrantyPeriod: 0,
-            productWarrantyUnit: 'months' as const,
-            installationWarrantyPeriod: w.installationWarrantyPeriod,
-            installationWarrantyUnit: w.installationWarrantyUnit,
-            state: w.state,
-            district: w.district,
-            postcode: w.postcode,
-            buildingType: w.buildingType,
-            otherBuildingType: w.otherBuildingType || '',
-          }];
-        }
-        return w.products.map((p, index) => ({
-            id: `${w.id}-${index}`, // Create a unique ID for each product line item
-            customerName: w.customerName,
-            phoneNumber: w.phoneNumber,
-            email: w.email,
-            state: w.state,
-            district: w.district,
-            postcode: w.postcode,
-            buildingType: w.buildingType,
-            otherBuildingType: w.otherBuildingType || '',
-            installDate: w.installDate || '',
-            installationWarrantyPeriod: w.installationWarrantyPeriod,
-            installationWarrantyUnit: w.installationWarrantyUnit,
-            productName: p.productName,
-            serialNumber: p.serialNumber,
-            purchaseDate: p.purchaseDate,
-            productWarrantyPeriod: p.productWarrantyPeriod,
-            productWarrantyUnit: p.productWarrantyUnit,
-        }));
-      });
-      
-      // 3. Prepare POST requests for each row
-      const promises = flattenedWarranties.map(row => {
-        const action = remoteIds.has(row.id) ? 'update' : 'add';
-        return fetch(googleSheetUrl, {
-          method: 'POST',
-          mode: 'no-cors', // Apps Script requires this for cross-origin POST from some environments
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action, payload: row })
-        });
-      });
-
-      await Promise.all(promises);
-
-      // Since 'no-cors' prevents reading the response, we optimistically show success.
-      setExportMessage({ type: 'success', text: `Export complete! ${flattenedWarranties.length} records processed. Please verify in your Google Sheet.` });
-
-    } catch (error) {
-      console.error('Export failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      setExportMessage({ type: 'error', text: `Export failed: ${errorMessage}` });
-    } finally {
-      setIsExporting(false);
-      setTimeout(() => setExportMessage(null), 7000); // Hide message after 7 seconds
-    }
+  const handleOpenSettings = () => setIsSettingsOpen(true);
+  const handleCloseSettings = () => setIsSettingsOpen(false);
+  const handleSaveSettings = (newSettings: AppSettings) => {
+      setSettings(newSettings);
   };
 
   const filteredWarranties = useMemo(() => {
-    if (!searchTerm) return warranties;
-    const lowercasedTerm = searchTerm.toLowerCase();
-    return warranties.filter(w =>
-      (w.customerName || '').toLowerCase().includes(lowercasedTerm) ||
-      w.products.some(p => 
-        (p.productName || '').toLowerCase().includes(lowercasedTerm) ||
-        (p.serialNumber || '').toLowerCase().includes(lowercasedTerm)
-      ) ||
-      (w.postcode || '').toLowerCase().includes(lowercasedTerm) ||
-      (w.district || '').toLowerCase().includes(lowercasedTerm) ||
-      (w.state || '').toLowerCase().includes(lowercasedTerm)
-    );
-  }, [warranties, searchTerm]);
+    let result = warranties;
+
+    if (searchTerm) {
+      const lowercasedTerm = searchTerm.toLowerCase();
+      result = result.filter(w =>
+        (w.customerName || '').toLowerCase().includes(lowercasedTerm) ||
+        w.products.some(p => 
+          (p.productName || '').toLowerCase().includes(lowercasedTerm) ||
+          (p.serialNumber || '').toLowerCase().includes(lowercasedTerm)
+        ) ||
+        (w.postcode || '').toLowerCase().includes(lowercasedTerm) ||
+        (w.district || '').toLowerCase().includes(lowercasedTerm) ||
+        (w.state || '').toLowerCase().includes(lowercasedTerm)
+      );
+    }
+
+    if (statusFilter !== 'all') {
+      result = result.filter(w => {
+        const { status } = getWarrantyStatusInfo(w, settings.expiryReminderDays);
+        return status === statusFilter;
+      });
+    }
+
+    return result;
+  }, [warranties, searchTerm, statusFilter, settings.expiryReminderDays]);
+  
+  const handleSelectionChange = (id: string) => {
+    setSelectedWarranties(prev => {
+        const newSelection = new Set(prev);
+        if (newSelection.has(id)) {
+            newSelection.delete(id);
+        } else {
+            newSelection.add(id);
+        }
+        return newSelection;
+    });
+  };
+
+  const handleSelectAll = (isChecked: boolean) => {
+    if (isChecked) {
+        setSelectedWarranties(new Set(filteredWarranties.map(w => w.id)));
+    } else {
+        setSelectedWarranties(new Set());
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (window.confirm(`Are you sure you want to delete ${selectedWarranties.size} selected records? This action cannot be undone.`)) {
+        setWarranties(prev => prev.filter(w => !selectedWarranties.has(w.id)));
+        setSelectedWarranties(new Set());
+    }
+  };
+
+  const getSelectedWarrantiesData = () => {
+    return warranties.filter(w => selectedWarranties.has(w.id));
+  };
+
+  const handleBulkExportCSV = () => {
+    exportWarrantiesToCSV(getSelectedWarrantiesData());
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-brand-dark flex flex-col">
       <Header
         onAddNew={handleAddNew}
+        onSettingsClick={handleOpenSettings}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        onExport={handleExport}
-        isExporting={isExporting}
-        isGoogleSheetConfigured={!!googleSheetUrl}
-        onOpenSettings={() => setIsSheetSetupOpen(true)}
       />
-
-      {exportMessage && (
-        <div className={`text-center p-2 text-white ${exportMessage.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-          {exportMessage.text}
-        </div>
-      )}
 
       <main className="container mx-auto p-4 md:p-6 lg:p-8 flex-grow">
         <WarrantyList
           warranties={filteredWarranties}
           onEdit={handleEdit}
           onDelete={deleteWarranty}
+          settings={settings}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          selectedWarranties={selectedWarranties}
+          onSelectionChange={handleSelectionChange}
+          onSelectAll={handleSelectAll}
+          onBulkDelete={handleBulkDelete}
+          onBulkExportCSV={handleBulkExportCSV}
         />
       </main>
 
@@ -312,15 +254,12 @@ const App: React.FC = () => {
             onClose={handlePreviewClose}
         />
       )}
-
-      {isSheetSetupOpen && (
-        <GoogleSheetSetup
-          currentUrl={googleSheetUrl}
-          onSave={(url) => {
-            setGoogleSheetUrl(url);
-            setIsSheetSetupOpen(false);
-          }}
-          onClose={() => setIsSheetSetupOpen(false)}
+      
+      {isSettingsOpen && (
+        <SettingsModal
+            currentSettings={settings}
+            onSave={handleSaveSettings}
+            onClose={handleCloseSettings}
         />
       )}
 

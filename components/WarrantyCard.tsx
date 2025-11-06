@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Warranty, WarrantyStatus } from '../types';
+import { Warranty, WarrantyStatus, AppSettings } from '../types';
 import WarrantyStatusBadge from './WarrantyStatusBadge';
 import { EditIcon, TrashIcon, CalendarIcon, UserIcon, SerialIcon, NotificationBellIcon, EmailIcon, WhatsAppIcon, LocationPinIcon, BuildingIcon, ToolboxIcon } from './icons/Icons';
 import WarrantyDetailModal from './WarrantyDetailModal';
@@ -9,6 +9,9 @@ interface WarrantyCardProps {
   warranty: Warranty;
   onEdit: (warranty: Warranty) => void;
   onDelete: (id: string) => void;
+  settings: AppSettings;
+  isSelected: boolean;
+  onSelectionChange: (id: string) => void;
 }
 
 const getBuildingTypeText = (warranty: Warranty): string => {
@@ -26,11 +29,11 @@ const getBuildingTypeText = (warranty: Warranty): string => {
     }
 }
 
-const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete }) => {
+const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete, settings, isSelected, onSelectionChange }) => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [showNotifyOptions, setShowNotifyOptions] = useState(false);
 
-  const { status } = getWarrantyStatusInfo(warranty);
+  const { status, color } = getWarrantyStatusInfo(warranty, settings.expiryReminderDays);
   const isExpiringSoon = status === WarrantyStatus.ExpiringSoon;
   const isExpired = status === WarrantyStatus.Expired;
 
@@ -79,8 +82,21 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete 
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-transform transform hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between">
-        <div className="p-5">
+      <div 
+        className={`bg-white rounded-xl shadow-lg overflow-hidden transition-all transform hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between relative ring-2 ${isSelected ? 'ring-brand-primary' : 'ring-transparent'}`}
+      >
+        <div className="absolute top-3 left-3 z-10">
+            <input
+                type="checkbox"
+                className="h-5 w-5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
+                checked={isSelected}
+                onChange={() => onSelectionChange(warranty.id)}
+                aria-label={`Select warranty for ${warranty.customerName}`}
+                onClick={(e) => e.stopPropagation()} // Stop propagation to not trigger other card clicks
+            />
+        </div>
+
+        <div className="p-5 pl-10">
             <div className="flex justify-between items-start mb-3">
                 <h3 className="text-xl font-bold text-brand-dark tracking-tight">
                     {cardTitle}
@@ -92,7 +108,7 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete 
                     {isExpiringSoon && !isExpired && (
                         <div className="relative">
                             <button 
-                                onClick={() => setShowNotifyOptions(!showNotifyOptions)} 
+                                onClick={(e) => { e.stopPropagation(); setShowNotifyOptions(!showNotifyOptions); }} 
                                 className="text-yellow-500 hover:text-yellow-600 p-1 rounded-full relative"
                                 aria-label="Notify Customer"
                             >
@@ -102,10 +118,10 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete 
                             {showNotifyOptions && (
                                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border">
                                     <div className="py-1">
-                                        <button onClick={() => handleNotify('email')} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <button onClick={(e) => { e.stopPropagation(); handleNotify('email'); }} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                             <EmailIcon /> Notify via Email
                                         </button>
-                                        <button onClick={() => handleNotify('whatsapp')} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <button onClick={(e) => { e.stopPropagation(); handleNotify('whatsapp'); }} className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                             <WhatsAppIcon /> Notify via WhatsApp
                                         </button>
                                     </div>
@@ -114,7 +130,8 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete 
                         </div>
                     )}
                     <WarrantyStatusBadge 
-                        warranty={warranty}
+                        status={status}
+                        color={color}
                     />
                 </div>
             </div>
@@ -164,7 +181,7 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete 
             </div>
         </div>
       </div>
-      {isDetailModalOpen && <WarrantyDetailModal warranty={warranty} onClose={() => setIsDetailModalOpen(false)} />}
+      {isDetailModalOpen && <WarrantyDetailModal warranty={warranty} settings={settings} onClose={() => setIsDetailModalOpen(false)} />}
     </>
   );
 };

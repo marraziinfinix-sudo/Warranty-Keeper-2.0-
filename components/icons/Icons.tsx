@@ -86,18 +86,3 @@ export const ToolboxIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
     </svg>
 );
-
-export const ExportIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-    </svg>
-);
-
-export const GoogleDriveIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 36 36" className="h-6 w-6">
-        <path fill="#34A853" d="M6 31l5.5-9.5H25l5.5 9.5z"></path>
-        <path fill="#4285F4" d="M30 6H17.5L12 15.5h12.5L30 6z"></path>
-        <path fill="#FFC107" d="M12 15.5L6.5 25H20l5.5-9.5z"></path>
-        <path fill="#1A73E8" d="M17.5 6L12 15.5 6.5 6H17.5z"></path>
-    </svg>
-);
