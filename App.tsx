@@ -8,8 +8,18 @@ import Header from './components/Header';
 import WarrantyPreviewModal from './components/WarrantyPreviewModal';
 import { triggerShare, getWarrantyStatusInfo, exportWarrantiesToCSV } from './utils/warrantyUtils';
 import SettingsModal from './components/SettingsModal';
+import LoginPage from './components/LoginPage';
 
 const App: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    // Check session storage to maintain login state across reloads
+    try {
+      return window.sessionStorage.getItem('isAuthenticated') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const [warranties, setWarranties] = useLocalStorage<Warranty[]>('warranties', []);
   const [settings, setSettings] = useLocalStorage<AppSettings>('appSettings', { expiryReminderDays: 30 });
   const [formSeedData, setFormSeedData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
@@ -19,6 +29,24 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    try {
+      window.sessionStorage.setItem('isAuthenticated', 'true');
+    } catch (e) {
+      console.error("Could not save auth state", e);
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    try {
+      window.sessionStorage.removeItem('isAuthenticated');
+    } catch (e) {
+       console.error("Could not clear auth state", e);
+    }
+  };
 
   // Auto-migrate old data structure to new one
   useEffect(() => {
@@ -212,6 +240,10 @@ const App: React.FC = () => {
     exportWarrantiesToCSV(getSelectedWarrantiesData());
   };
 
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-brand-dark flex flex-col">
       <Header
@@ -219,6 +251,7 @@ const App: React.FC = () => {
         onSettingsClick={handleOpenSettings}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        onLogout={handleLogout}
       />
 
       <main className="container mx-auto p-4 md:p-6 lg:p-8 flex-grow">

@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { PlusIcon, SettingsIcon } from './icons/Icons';
+import { PlusIcon, SettingsIcon, LogoutIcon } from './icons/Icons';
 
 interface HeaderProps {
     onAddNew: () => void;
     onSettingsClick: () => void;
     searchTerm: string;
     onSearchChange: (term: string) => void;
+    onLogout: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -14,6 +15,7 @@ const Header: React.FC<HeaderProps> = ({
     onSettingsClick, 
     searchTerm, 
     onSearchChange, 
+    onLogout
 }) => {
     return (
         <header className="bg-white shadow-md sticky top-0 z-10">
@@ -21,7 +23,7 @@ const Header: React.FC<HeaderProps> = ({
                 <h1 className="text-2xl md:text-3xl font-bold text-brand-primary">
                     Warranty Keeper
                 </h1>
-                <div className="w-full md:w-auto md:flex-grow max-w-lg">
+                <div className="w-full md:w-auto md:flex-grow max-w-lg order-3 md:order-2">
                     <input
                         type="text"
                         placeholder="Search by customer, product, or serial number..."
@@ -30,7 +32,7 @@ const Header: React.FC<HeaderProps> = ({
                         onChange={e => onSearchChange(e.target.value)}
                     />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 order-2 md:order-3">
                     <button 
                         onClick={onAddNew}
                         className="flex items-center gap-2 bg-brand-primary text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
@@ -45,6 +47,15 @@ const Header: React.FC<HeaderProps> = ({
                         aria-label="Settings"
                     >
                         <SettingsIcon />
+                    </button>
+                    <div className="h-6 w-px bg-gray-300 mx-1"></div>
+                    <button
+                        onClick={onLogout}
+                        className="p-2 text-gray-500 rounded-full hover:bg-red-50 hover:text-brand-danger transition-colors focus:outline-none focus:ring-2 focus:ring-brand-danger"
+                        aria-label="Logout"
+                        title="Sign Out"
+                    >
+                        <LogoutIcon />
                     </button>
                 </div>
             </div>
