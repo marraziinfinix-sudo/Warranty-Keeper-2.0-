@@ -12,20 +12,16 @@ import LoginPage from './components/LoginPage';
 import { auth } from './firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 
-const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+interface DashboardProps {
+  user: User;
+  onLogout: () => void;
+}
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const [warranties, setWarranties] = useLocalStorage<Warranty[]>('warranties', []);
-  const [settings, setSettings] = useLocalStorage<AppSettings>('appSettings', { expiryReminderDays: 30 });
+const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
+  // Scope local storage keys with user UID
+  const [warranties, setWarranties] = useLocalStorage<Warranty[]>(`warranties_${user.uid}`, []);
+  const [settings, setSettings] = useLocalStorage<AppSettings>(`appSettings_${user.uid}`, { expiryReminderDays: 30 });
+  
   const [formSeedData, setFormSeedData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -33,14 +29,6 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
-
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-    } catch (e) {
-       console.error("Error signing out", e);
-    }
-  };
 
   // Auto-migrate old data structure to new one
   useEffect(() => {
@@ -234,18 +222,6 @@ const App: React.FC = () => {
     exportWarrantiesToCSV(getSelectedWarrantiesData());
   };
 
-  if (authLoading) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-brand-light">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
-          </div>
-      );
-  }
-
-  if (!user) {
-    return <LoginPage />;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-brand-dark flex flex-col">
       <Header
@@ -253,7 +229,7 @@ const App: React.FC = () => {
         onSettingsClick={handleOpenSettings}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        onLogout={handleLogout}
+        onLogout={onLogout}
       />
 
       <main className="container mx-auto p-4 md:p-6 lg:p-8 flex-grow">
@@ -304,6 +280,45 @@ const App: React.FC = () => {
       </footer>
     </div>
   );
+};
+
+const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (e) {
+       console.error("Error signing out", e);
+    }
+  };
+
+  if (authLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-brand-light">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+          </div>
+      );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  // The key={user.uid} prop is crucial. It tells React to completely replace 
+  // the Dashboard component instance when the user changes (e.g. logout/login as different user).
+  // This ensures that all hooks inside Dashboard (specifically useLocalStorage) 
+  // are re-initialized with the new user's specific keys.
+  return <Dashboard key={user.uid} user={user} onLogout={handleLogout} />;
 };
 
 export default App;
