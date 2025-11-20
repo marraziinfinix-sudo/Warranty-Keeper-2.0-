@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { auth } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, AuthError } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, AuthError } from 'firebase/auth';
+import { EyeIcon, EyeOffIcon } from './icons/Icons';
 
 interface LoginPageProps {
   onLogin?: () => void; // Optional now as App.tsx handles state
@@ -11,8 +12,11 @@ const LoginPage: React.FC<LoginPageProps> = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [resetMessage, setResetMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,10 +58,48 @@ const LoginPage: React.FC<LoginPageProps> = () => {
     }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setResetMessage('');
+    setLoading(true);
+
+    if (!email) {
+        setError('Please enter your email address.');
+        setLoading(false);
+        return;
+    }
+
+    try {
+        await sendPasswordResetEmail(auth, email);
+        setResetMessage('Check your email for a link to reset your password.');
+    } catch (err) {
+        const firebaseError = err as AuthError;
+        let errorMessage = "Failed to send reset email.";
+        if (firebaseError.code === 'auth/user-not-found') {
+             errorMessage = "No account found with this email.";
+        } else if (firebaseError.code === 'auth/invalid-email') {
+            errorMessage = "Please enter a valid email address.";
+        }
+        setError(errorMessage);
+    }
+    setLoading(false);
+  };
+
   const toggleMode = () => {
       setIsSignUp(!isSignUp);
       setError('');
+      setResetMessage('');
       setEmail('');
+      setPassword('');
+      setShowPassword(false);
+  };
+
+  const toggleResetMode = () => {
+      setIsResetMode(!isResetMode);
+      setError('');
+      setResetMessage('');
+      // Keep email if entered
       setPassword('');
   };
 
@@ -75,67 +117,143 @@ const LoginPage: React.FC<LoginPageProps> = () => {
         </div>
         
         <div className="p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
-                    <div className="bg-red-50 border-l-4 border-brand-danger p-4 text-sm text-red-700 rounded">
-                        <p>{error}</p>
+            {isResetMode ? (
+                // Reset Password Form
+                <form onSubmit={handlePasswordReset} className="space-y-6">
+                    <div className="text-center mb-4">
+                        <h2 className="text-xl font-bold text-gray-800">Reset Password</h2>
+                        <p className="text-sm text-gray-500 mt-1">Enter your email to receive a reset link.</p>
                     </div>
-                )}
+                    
+                    {error && (
+                        <div className="bg-red-50 border-l-4 border-brand-danger p-4 text-sm text-red-700 rounded">
+                            <p>{error}</p>
+                        </div>
+                    )}
 
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
-                    <input
-                        id="email"
-                        type="email"
-                        required
-                        className="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all sm:text-sm"
-                        placeholder="name@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                </div>
+                    {resetMessage && (
+                        <div className="bg-green-50 border-l-4 border-green-500 p-4 text-sm text-green-700 rounded">
+                            <p>{resetMessage}</p>
+                        </div>
+                    )}
 
-                <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-                    <input
-                        id="password"
-                        type="password"
-                        required
-                        className="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all sm:text-sm"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-                </div>
+                    <div>
+                        <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700">Email Address</label>
+                        <input
+                            id="reset-email"
+                            type="email"
+                            required
+                            className="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all sm:text-sm"
+                            placeholder="name@example.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                        />
+                    </div>
 
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-bold text-white bg-brand-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-all transform hover:-translate-y-0.5 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                >
-                    {loading ? (
-                        <>
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            {isSignUp ? 'Creating Account...' : 'Signing In...'}
-                        </>
-                    ) : (isSignUp ? 'Create Account' : 'Sign In')}
-                </button>
-            </form>
-            
-            <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
-                    {isSignUp ? "Already have an account?" : "Don't have an account?"}
-                    <button 
-                        onClick={toggleMode}
-                        className="ml-1 font-medium text-brand-primary hover:text-blue-500 focus:outline-none hover:underline"
+                    <button
+                        type="submit"
+                        disabled={loading || !!resetMessage}
+                        className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-bold text-white bg-brand-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-all transform hover:-translate-y-0.5 ${loading || !!resetMessage ? 'opacity-70 cursor-not-allowed' : ''}`}
                     >
-                        {isSignUp ? 'Sign In' : 'Sign Up'}
+                        {loading ? 'Sending...' : 'Send Reset Link'}
                     </button>
-                </p>
-            </div>
+
+                    <div className="text-center mt-4">
+                        <button
+                            type="button"
+                            onClick={toggleResetMode}
+                            className="text-sm text-brand-primary hover:text-blue-600 hover:underline font-medium"
+                        >
+                            Back to Sign In
+                        </button>
+                    </div>
+                </form>
+            ) : (
+                // Login / Signup Form
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {error && (
+                        <div className="bg-red-50 border-l-4 border-brand-danger p-4 text-sm text-red-700 rounded">
+                            <p>{error}</p>
+                        </div>
+                    )}
+
+                    <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
+                        <input
+                            id="email"
+                            type="email"
+                            required
+                            className="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all sm:text-sm"
+                            placeholder="name@example.com"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                        />
+                    </div>
+
+                    <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                        <div className="relative">
+                            <input
+                                id="password"
+                                type={showPassword ? "text" : "password"}
+                                required
+                                className="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all sm:text-sm pr-10"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 mt-1 focus:outline-none"
+                            >
+                                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                            </button>
+                        </div>
+                        {!isSignUp && (
+                            <div className="flex justify-end mt-1">
+                                <button
+                                    type="button"
+                                    onClick={toggleResetMode}
+                                    className="text-xs text-brand-primary hover:text-blue-600 hover:underline"
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className={`w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg shadow-md text-sm font-bold text-white bg-brand-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary transition-all transform hover:-translate-y-0.5 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    >
+                        {loading ? (
+                            <>
+                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                {isSignUp ? 'Creating Account...' : 'Signing In...'}
+                            </>
+                        ) : (isSignUp ? 'Create Account' : 'Sign In')}
+                    </button>
+                </form>
+            )}
+            
+            {!isResetMode && (
+                <div className="mt-6 text-center">
+                    <p className="text-sm text-gray-600">
+                        {isSignUp ? "Already have an account?" : "Don't have an account?"}
+                        <button 
+                            onClick={toggleMode}
+                            className="ml-1 font-medium text-brand-primary hover:text-blue-500 focus:outline-none hover:underline"
+                        >
+                            {isSignUp ? 'Sign In' : 'Sign Up'}
+                        </button>
+                    </p>
+                </div>
+            )}
         </div>
         <div className="px-8 py-4 bg-gray-50 border-t border-gray-100 text-center">
             <p className="text-xs text-gray-400">© {new Date().getFullYear()} Warranty Keeper. Ver 2.0</p>
