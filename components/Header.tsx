@@ -8,6 +8,7 @@ interface HeaderProps {
     searchTerm: string;
     onSearchChange: (term: string) => void;
     onLogout: () => void;
+    companyName?: string;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -15,14 +16,20 @@ const Header: React.FC<HeaderProps> = ({
     onSettingsClick, 
     searchTerm, 
     onSearchChange, 
-    onLogout
+    onLogout,
+    companyName
 }) => {
     return (
         <header className="bg-white shadow-md sticky top-0 z-10">
             <div className="container mx-auto px-4 md:px-6 py-4 flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl md:text-3xl font-bold text-brand-primary">
-                    Warranty Keeper
-                </h1>
+                <div className="flex flex-col">
+                    <h1 className="text-2xl md:text-3xl font-bold text-brand-primary leading-none">
+                        Warranty Keeper
+                    </h1>
+                    {companyName && (
+                        <span className="text-sm text-gray-500 font-medium mt-1">{companyName}</span>
+                    )}
+                </div>
                 <div className="w-full md:w-auto md:flex-grow max-w-lg order-3 md:order-2">
                     <input
                         type="text"

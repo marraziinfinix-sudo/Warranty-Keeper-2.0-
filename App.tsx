@@ -9,8 +9,9 @@ import WarrantyPreviewModal from './components/WarrantyPreviewModal';
 import { triggerShare, getWarrantyStatusInfo, exportWarrantiesToCSV } from './utils/warrantyUtils';
 import SettingsModal from './components/SettingsModal';
 import LoginPage from './components/LoginPage';
-import { auth } from './firebase';
+import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface DashboardProps {
   user: User;
@@ -29,7 +30,25 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
+  const [companyName, setCompanyName] = useState('');
   
+  useEffect(() => {
+    const fetchCompanyName = async () => {
+        if (user.uid) {
+            try {
+                const userDoc = await getDoc(doc(db, 'users', user.uid));
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    setCompanyName(userData.companyName || '');
+                }
+            } catch (error) {
+                console.error("Error fetching company name:", error);
+            }
+        }
+    };
+    fetchCompanyName();
+  }, [user.uid]);
+
   const productList = useMemo(() => {
     const allProductNames = warranties.flatMap(w => w.products.map(p => p.productName));
     return [...new Set(allProductNames)].sort();
@@ -185,6 +204,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onLogout={onLogout}
+        companyName={companyName}
       />
 
       <main className="container mx-auto p-4 md:p-6 lg:p-8 flex-grow">
