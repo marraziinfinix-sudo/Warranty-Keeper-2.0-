@@ -11,14 +11,15 @@ import SettingsModal from './components/SettingsModal';
 import LoginPage from './components/LoginPage';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface DashboardProps {
   user: User;
   onLogout: () => void;
+  companyName: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) => {
   // Use Firestore hooks
   const { warranties, loading: warrantiesLoading, addWarranty: addWarrantyToDb, updateWarranty: updateWarrantyInDb, deleteWarranty: deleteWarrantyFromDb, bulkDeleteWarranties } = useWarranties(user.uid);
   const { settings, updateSettings } = useSettings(user.uid);
@@ -30,25 +31,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
-  const [companyName, setCompanyName] = useState('');
   
-  useEffect(() => {
-    const fetchCompanyName = async () => {
-        if (user.uid) {
-            try {
-                const userDoc = await getDoc(doc(db, 'users', user.uid));
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    setCompanyName(userData.companyName || '');
-                }
-            } catch (error) {
-                console.error("Error fetching company name:", error);
-            }
-        }
-    };
-    fetchCompanyName();
-  }, [user.uid]);
-
   const productList = useMemo(() => {
     const allProductNames = warranties.flatMap(w => w.products.map(p => p.productName));
     return [...new Set(allProductNames)].sort();
@@ -259,6 +242,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [companyName, setCompanyName] = useState<string>('');
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -268,6 +252,19 @@ const App: React.FC = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+      if (user) {
+          const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+              if (docSnap.exists()) {
+                  setCompanyName(docSnap.data().companyName || '');
+              }
+          });
+          return () => unsubscribe();
+      } else {
+          setCompanyName('');
+      }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -289,7 +286,7 @@ const App: React.FC = () => {
     return <LoginPage />;
   }
 
-  return <Dashboard key={user.uid} user={user} onLogout={handleLogout} />;
+  return <Dashboard key={user.uid} user={user} companyName={companyName} onLogout={handleLogout} />;
 };
 
 export default App;
