@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { auth } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, AuthError } from 'firebase/auth';
+import { auth, db } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, AuthError, deleteUser } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { EyeIcon, EyeOffIcon } from './icons/Icons';
 
 interface LoginPageProps {
@@ -10,6 +11,7 @@ interface LoginPageProps {
 
 const LoginPage: React.FC<LoginPageProps> = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -25,32 +27,80 @@ const LoginPage: React.FC<LoginPageProps> = () => {
 
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        if (!companyName.trim()) {
+            throw new Error("Company Name is required.");
+        }
+
+        // Create user first to establish authentication
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        try {
+            // Normalize company name for uniqueness check
+            const normalizedCompanyName = companyName.trim().toLowerCase();
+            const companyRef = doc(db, 'registered_companies', normalizedCompanyName);
+            
+            // Check if company name is already taken
+            const companySnap = await getDoc(companyRef);
+            if (companySnap.exists()) {
+                throw new Error("This Company Name is already registered.");
+            }
+
+            // Reserve the company name
+            await setDoc(companyRef, {
+                name: companyName.trim(),
+                uid: user.uid,
+                createdAt: new Date().toISOString()
+            });
+
+            // Create user profile with company info
+            await setDoc(doc(db, 'users', user.uid), {
+                companyName: companyName.trim(),
+                email: email,
+                createdAt: new Date().toISOString()
+            });
+
+        } catch (innerError: any) {
+            // If Firestore operations fail (e.g. duplicate company), delete the created auth user
+            await deleteUser(user);
+            throw innerError;
+        }
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
       // Auth listener in App.tsx will handle redirection
-    } catch (err) {
+    } catch (err: any) {
+      // Handle specific custom errors first
+      if (err.message === "This Company Name is already registered." || err.message === "Company Name is required.") {
+          setError(err.message);
+          setLoading(false);
+          return;
+      }
+
       const firebaseError = err as AuthError;
       let errorMessage = "An error occurred. Please try again.";
       
-      switch (firebaseError.code) {
-        case 'auth/invalid-credential':
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-            errorMessage = "Invalid email or password.";
-            break;
-        case 'auth/email-already-in-use':
-            errorMessage = "This email is already registered.";
-            break;
-        case 'auth/weak-password':
-            errorMessage = "Password should be at least 6 characters.";
-            break;
-        case 'auth/invalid-email':
-            errorMessage = "Please enter a valid email address.";
-            break;
-        default:
-            errorMessage = firebaseError.message;
+      if (firebaseError.code) {
+          switch (firebaseError.code) {
+            case 'auth/invalid-credential':
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+                errorMessage = "Invalid email or password.";
+                break;
+            case 'auth/email-already-in-use':
+                errorMessage = "This email is already registered.";
+                break;
+            case 'auth/weak-password':
+                errorMessage = "Password should be at least 6 characters.";
+                break;
+            case 'auth/invalid-email':
+                errorMessage = "Please enter a valid email address.";
+                break;
+            default:
+                errorMessage = firebaseError.message;
+          }
+      } else {
+          errorMessage = err.message || errorMessage;
       }
       
       setError(errorMessage);
@@ -90,6 +140,7 @@ const LoginPage: React.FC<LoginPageProps> = () => {
       setIsSignUp(!isSignUp);
       setError('');
       setResetMessage('');
+      setCompanyName('');
       setEmail('');
       setPassword('');
       setShowPassword(false);
@@ -174,6 +225,22 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                     {error && (
                         <div className="bg-red-50 border-l-4 border-brand-danger p-4 text-sm text-red-700 rounded">
                             <p>{error}</p>
+                        </div>
+                    )}
+
+                    {isSignUp && (
+                        <div>
+                            <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">Company Name</label>
+                            <input
+                                id="companyName"
+                                type="text"
+                                required={isSignUp}
+                                className="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all sm:text-sm"
+                                placeholder="e.g. Acme Solutions"
+                                value={companyName}
+                                onChange={(e) => setCompanyName(e.target.value)}
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Each company name must be unique.</p>
                         </div>
                     )}
 
@@ -264,3 +331,4 @@ const LoginPage: React.FC<LoginPageProps> = () => {
 };
 
 export default LoginPage;
+    
