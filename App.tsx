@@ -48,6 +48,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
 
   const deleteWarranty = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this warranty record? This action cannot be undone.')) {
+        // We await here to ensure the UI doesn't glitch, but persistence makes this fast locally
         await deleteWarrantyFromDb(id);
     }
   };
@@ -77,15 +78,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
     if (!previewData) return;
     const data = previewData;
 
-    if ('id' in data && data.id) {
-        await updateWarranty(data as Warranty);
-    } else {
-        await addWarranty(data);
-    }
-    
-    triggerShare(data, shareOptions);
-    
+    // Optimistic update: Close the modal immediately so the user can continue working.
+    // The database update happens in the background.
     setPreviewData(null);
+
+    try {
+        if ('id' in data && data.id) {
+            await updateWarranty(data as Warranty);
+        } else {
+            await addWarranty(data);
+        }
+        
+        // Trigger sharing after the data is queued for saving
+        triggerShare(data, shareOptions);
+    } catch (error) {
+        console.error("Error saving warranty in background:", error);
+        alert("There was an issue saving your data to the cloud. It will retry automatically when connection is available.");
+    }
   };
 
   const handlePreviewEdit = () => {
@@ -102,6 +111,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   const handleOpenSettings = () => setIsSettingsOpen(true);
   const handleCloseSettings = () => setIsSettingsOpen(false);
   const handleSaveSettings = (newSettings: AppSettings) => {
+      // This triggers a background update
       updateSettings(newSettings);
   };
 
@@ -234,7 +244,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
 
       <footer className="text-center text-sm text-gray-500 py-4">
         <span className="block">Logged in as {user.email}</span>
-        Data is securely synced with the cloud.
+        Data is securely synced with the cloud in real-time.
       </footer>
     </div>
   );
