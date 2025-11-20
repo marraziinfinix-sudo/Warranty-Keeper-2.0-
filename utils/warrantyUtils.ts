@@ -1,3 +1,4 @@
+
 import { Warranty, WarrantyStatus, Product } from '../types';
 
 export interface WarrantyStatusInfo {
@@ -63,14 +64,54 @@ export const getEarliestProductExpiry = (products: Product[]): Date | null => {
     return new Date(Math.min.apply(null, expiryDates.map(d => d.getTime())));
 }
 
-export const getWarrantyStatusInfo = (warranty: Warranty, expiryReminderDays: number): WarrantyStatusInfo => {
-    const allExpiryDates: Date[] = [];
+export const getWarrantyStatusInfo = (warranty: Warranty, globalExpiryReminderDays: number): WarrantyStatusInfo => {
+    let allExpired = true;
+    let hasExpiringSoon = false;
+    // Initialize to a past date
+    let latestRelevantExpiryDate = new Date(0); 
+    let hasCheckedAnyItem = false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Helper to check individual item status
+    const checkItem = (expiryDate: Date, thresholdDays: number) => {
+        hasCheckedAnyItem = true;
+        const expiry = new Date(expiryDate);
+        expiry.setHours(0, 0, 0, 0);
+
+        const reminderDate = new Date(today);
+        reminderDate.setDate(today.getDate() + thresholdDays);
+
+        if (expiry >= today) {
+            allExpired = false; // Found an active item
+            // Keep track of the furthest active expiry date for "Active" status display
+            if (expiry > latestRelevantExpiryDate) {
+                latestRelevantExpiryDate = expiry;
+            }
+        } else {
+            // For expired items, we also track date if it's the "latest" thing we have so far
+            // (e.g. if all expired, show the last one to expire)
+            if (allExpired && expiry > latestRelevantExpiryDate) {
+                latestRelevantExpiryDate = expiry;
+            }
+        }
+
+        if (expiry >= today && expiry <= reminderDate) {
+            hasExpiringSoon = true;
+        }
+    };
 
     if (warranty.products && warranty.products.length > 0) {
         warranty.products.forEach(p => {
             if (p.productWarrantyPeriod > 0) {
                 const expiry = calculateExpiryDate(p.purchaseDate, p.productWarrantyPeriod, p.productWarrantyUnit);
-                if (expiry) allExpiryDates.push(expiry);
+                if (expiry) {
+                    const threshold = p.expiryReminderDays !== undefined && p.expiryReminderDays !== null 
+                        ? p.expiryReminderDays 
+                        : globalExpiryReminderDays;
+                    checkItem(expiry, threshold);
+                }
             }
         });
     }
@@ -78,31 +119,29 @@ export const getWarrantyStatusInfo = (warranty: Warranty, expiryReminderDays: nu
     if (warranty.servicesProvided?.install && warranty.installDate && warranty.installationWarrantyPeriod > 0) {
         const installExpiryDate = calculateExpiryDate(warranty.installDate, warranty.installationWarrantyPeriod, warranty.installationWarrantyUnit);
         if (installExpiryDate) {
-            allExpiryDates.push(installExpiryDate);
+            checkItem(installExpiryDate, globalExpiryReminderDays);
         }
     }
 
-    if (allExpiryDates.length === 0) {
+    // If we didn't check any items (no warranties), default to Active
+    if (!hasCheckedAnyItem) {
         return { status: WarrantyStatus.Active, color: 'bg-brand-success', expiryDate: new Date('9999-12-31') };
     }
-    
-    const latestExpiryDate = new Date(Math.max.apply(null, allExpiryDates.map(d => d.getTime())));
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    latestExpiryDate.setHours(0, 0, 0, 0);
 
-    const reminderDate = new Date();
-    reminderDate.setDate(today.getDate() + expiryReminderDays);
-    reminderDate.setHours(0, 0, 0, 0);
+    // Logic Priority: 
+    // 1. If ALL items are expired -> Expired
+    // 2. If ANY item is Expiring Soon (and not all expired) -> Expiring Soon
+    // 3. Otherwise -> Active
 
-    if (latestExpiryDate < today) {
-        return { status: WarrantyStatus.Expired, color: 'bg-brand-danger', expiryDate: latestExpiryDate };
+    if (allExpired) {
+        return { status: WarrantyStatus.Expired, color: 'bg-brand-danger', expiryDate: latestRelevantExpiryDate };
     }
-    if (latestExpiryDate <= reminderDate) {
-        return { status: WarrantyStatus.ExpiringSoon, color: 'bg-brand-warning', expiryDate: latestExpiryDate };
+
+    if (hasExpiringSoon) {
+        return { status: WarrantyStatus.ExpiringSoon, color: 'bg-brand-warning', expiryDate: latestRelevantExpiryDate };
     }
-    return { status: WarrantyStatus.Active, color: 'bg-brand-success', expiryDate: latestExpiryDate };
+
+    return { status: WarrantyStatus.Active, color: 'bg-brand-success', expiryDate: latestRelevantExpiryDate };
 };
 
 export const formatPhoneNumberForWhatsApp = (phone: string): string => {
@@ -265,7 +304,8 @@ export const exportWarrantiesToCSV = (warranties: Warranty[]) => {
     'id', 'customerName', 'phoneNumber', 'email', 'servicesProvided',
     'installDate', 'installationWarrantyPeriod', 'installationWarrantyUnit',
     'postcode', 'district', 'state', 'buildingType', 'otherBuildingType',
-    'productName', 'serialNumber', 'purchaseDate', 'productWarrantyPeriod', 'productWarrantyUnit'
+    'productName', 'serialNumber', 'purchaseDate', 'productWarrantyPeriod', 'productWarrantyUnit',
+    'productExpiryReminderDays'
   ];
 
   const rows = warranties.flatMap(w => {
@@ -276,13 +316,14 @@ export const exportWarrantiesToCSV = (warranties: Warranty[]) => {
     ];
 
     if (!w.products || w.products.length === 0) {
-      const emptyProductData = ['', '', '', '', ''];
+      const emptyProductData = ['', '', '', '', '', ''];
       return [[...commonData, ...emptyProductData].map(escapeCSV).join(',')];
     }
 
     return w.products.map(p => {
       const productData = [
-        p.productName, p.serialNumber, formatDate(p.purchaseDate), p.productWarrantyPeriod, p.productWarrantyUnit
+        p.productName, p.serialNumber, formatDate(p.purchaseDate), p.productWarrantyPeriod, p.productWarrantyUnit,
+        p.expiryReminderDays !== undefined ? p.expiryReminderDays : ''
       ];
       return [...commonData, ...productData].map(escapeCSV).join(',');
     });

@@ -1,9 +1,11 @@
+
 export interface Product {
   productName: string;
   serialNumber: string;
   purchaseDate: string; // YYYY-MM-DD
   productWarrantyPeriod: number; // The number for the warranty period
   productWarrantyUnit: 'days' | 'weeks' | 'months' | 'years'; // The unit for the period
+  expiryReminderDays?: number; // Optional override for global reminder setting
 }
 
 export interface Warranty {

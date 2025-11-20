@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Warranty, Product } from '../types';
 import { formatDate } from '../utils/warrantyUtils';
@@ -42,7 +43,10 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
         customerName: initialData.customerName,
         phoneNumber: initialData.phoneNumber,
         email: initialData.email,
-        products: initialData.products,
+        products: initialData.products.map(p => ({
+            ...p,
+            expiryReminderDays: p.expiryReminderDays // Ensure this is copied
+        })),
         servicesProvided: initialData.servicesProvided ?? { supply: false, install: !!initialData.installDate },
         installDate: initialData.installDate ?? '',
         installationWarrantyPeriod: initialData.installationWarrantyPeriod ?? 0,
@@ -94,6 +98,10 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
 
     if (name === 'productWarrantyPeriod') {
       (productToUpdate as any)[name] = parseInt(value, 10) || 0;
+    } else if (name === 'expiryReminderDays') {
+        const val = parseInt(value, 10);
+        // If empty string or NaN, set to undefined to use global default
+        (productToUpdate as any)[name] = isNaN(val) ? undefined : val;
     } else {
       (productToUpdate as any)[name] = value;
     }
@@ -216,6 +224,22 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                             <option value="years">Years</option>
                                         </select>
                                     </div>
+                                </div>
+                                <div className="md:col-span-2 border-t border-dashed pt-3 mt-1">
+                                    <label className="block text-sm font-medium text-gray-700">Alert Threshold (Optional)</label>
+                                    <div className="flex items-center gap-2 mt-1 max-w-md">
+                                        <input 
+                                            type="number" 
+                                            name="expiryReminderDays" 
+                                            value={product.expiryReminderDays !== undefined ? product.expiryReminderDays : ''} 
+                                            onChange={e => handleProductChange(index, e)} 
+                                            min="1" 
+                                            placeholder="Default"
+                                            className={`${formInputStyles} w-32`} 
+                                        />
+                                        <span className="text-sm text-gray-500">days before expiry</span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">Leave blank to use the global app setting for this product.</p>
                                 </div>
                             </div>
                         ))}

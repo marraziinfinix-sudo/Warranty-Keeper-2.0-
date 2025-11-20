@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Warranty, WarrantyStatus, Product, AppSettings } from '../types';
 import { getWarrantyStatusInfo, formatDate, formatPhoneNumberForWhatsApp, formatWarrantyText, calculateExpiryDate, generateShareMessage, getServiceText } from '../utils/warrantyUtils';
@@ -96,6 +97,9 @@ const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({ warranty, onC
                                     <DetailRow label="Purchase Date" value={formatDate(product.purchaseDate)} />
                                     <DetailRow label="Warranty Period" value={formatWarrantyText(product.productWarrantyPeriod, product.productWarrantyUnit)} />
                                     <DetailRow label="Expires On" value={formatDate(expiryDate)} />
+                                    {product.expiryReminderDays !== undefined && (
+                                         <DetailRow label="Alert Threshold" value={`${product.expiryReminderDays} days before expiry`} />
+                                    )}
                                 </div>
                             </div>
                         )
