@@ -9,16 +9,20 @@ import WarrantyPreviewModal from './components/WarrantyPreviewModal';
 import { triggerShare, getWarrantyStatusInfo, exportWarrantiesToCSV } from './utils/warrantyUtils';
 import SettingsModal from './components/SettingsModal';
 import LoginPage from './components/LoginPage';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    // Check session storage to maintain login state across reloads
-    try {
-      return window.sessionStorage.getItem('isAuthenticated') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const [warranties, setWarranties] = useLocalStorage<Warranty[]>('warranties', []);
   const [settings, setSettings] = useLocalStorage<AppSettings>('appSettings', { expiryReminderDays: 30 });
@@ -30,21 +34,11 @@ const App: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
+  const handleLogout = async () => {
     try {
-      window.sessionStorage.setItem('isAuthenticated', 'true');
+      await signOut(auth);
     } catch (e) {
-      console.error("Could not save auth state", e);
-    }
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    try {
-      window.sessionStorage.removeItem('isAuthenticated');
-    } catch (e) {
-       console.error("Could not clear auth state", e);
+       console.error("Error signing out", e);
     }
   };
 
@@ -240,8 +234,16 @@ const App: React.FC = () => {
     exportWarrantiesToCSV(getSelectedWarrantiesData());
   };
 
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
+  if (authLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-brand-light">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+          </div>
+      );
+  }
+
+  if (!user) {
+    return <LoginPage />;
   }
 
   return (
@@ -297,6 +299,7 @@ const App: React.FC = () => {
       )}
 
       <footer className="text-center text-sm text-gray-500 py-4">
+        <span className="block">Logged in as {user.email}</span>
         All data is stored securely on your device.
       </footer>
     </div>

@@ -1,30 +1,64 @@
 
 import React, { useState } from 'react';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, AuthError } from 'firebase/auth';
 
 interface LoginPageProps {
-  onLogin: () => void;
+  onLogin?: () => void; // Optional now as App.tsx handles state
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = () => {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // Simulate network delay for better UX
-    setTimeout(() => {
-      if (password === 'admin') {
-        onLogin();
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
       } else {
-        setError('Invalid password. Hint: Use "admin".');
-        setLoading(false);
+        await signInWithEmailAndPassword(auth, email, password);
       }
-    }, 600);
+      // Auth listener in App.tsx will handle redirection
+    } catch (err) {
+      const firebaseError = err as AuthError;
+      let errorMessage = "An error occurred. Please try again.";
+      
+      switch (firebaseError.code) {
+        case 'auth/invalid-credential':
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+            errorMessage = "Invalid email or password.";
+            break;
+        case 'auth/email-already-in-use':
+            errorMessage = "This email is already registered.";
+            break;
+        case 'auth/weak-password':
+            errorMessage = "Password should be at least 6 characters.";
+            break;
+        case 'auth/invalid-email':
+            errorMessage = "Please enter a valid email address.";
+            break;
+        default:
+            errorMessage = firebaseError.message;
+      }
+      
+      setError(errorMessage);
+      setLoading(false);
+    }
+  };
+
+  const toggleMode = () => {
+      setIsSignUp(!isSignUp);
+      setError('');
+      setEmail('');
+      setPassword('');
   };
 
   return (
@@ -43,7 +77,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         <div className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
                 {error && (
-                    <div className="bg-red-50 border-l-4 border-brand-danger p-4 text-sm text-red-700 rounded animate-pulse">
+                    <div className="bg-red-50 border-l-4 border-brand-danger p-4 text-sm text-red-700 rounded">
                         <p>{error}</p>
                     </div>
                 )}
@@ -72,7 +106,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
-                    <p className="mt-2 text-xs text-gray-500 text-right">Hint: Password is 'admin'</p>
                 </div>
 
                 <button
@@ -86,11 +119,23 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Signing In...
+                            {isSignUp ? 'Creating Account...' : 'Signing In...'}
                         </>
-                    ) : 'Sign In'}
+                    ) : (isSignUp ? 'Create Account' : 'Sign In')}
                 </button>
             </form>
+            
+            <div className="mt-6 text-center">
+                <p className="text-sm text-gray-600">
+                    {isSignUp ? "Already have an account?" : "Don't have an account?"}
+                    <button 
+                        onClick={toggleMode}
+                        className="ml-1 font-medium text-brand-primary hover:text-blue-500 focus:outline-none hover:underline"
+                    >
+                        {isSignUp ? 'Sign In' : 'Sign Up'}
+                    </button>
+                </p>
+            </div>
         </div>
         <div className="px-8 py-4 bg-gray-50 border-t border-gray-100 text-center">
             <p className="text-xs text-gray-400">© {new Date().getFullYear()} Warranty Keeper. Ver 2.0</p>
