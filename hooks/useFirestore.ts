@@ -8,7 +8,8 @@ import {
   setDoc, 
   deleteDoc, 
   query,
-  writeBatch
+  writeBatch,
+  getDocs
 } from 'firebase/firestore';
 import { Warranty, AppSettings, Customer, SavedProduct } from '../types';
 
@@ -63,7 +64,17 @@ export const useWarranties = (userId: string) => {
       await batch.commit();
   }
 
-  return { warranties, loading, addWarranty, updateWarranty, deleteWarranty, bulkDeleteWarranties };
+  const clearWarranties = async () => {
+      const q = query(collection(db, 'users', userId, 'warranties'));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+      });
+      await batch.commit();
+  };
+
+  return { warranties, loading, addWarranty, updateWarranty, deleteWarranty, bulkDeleteWarranties, clearWarranties };
 };
 
 export const useSettings = (userId: string) => {
@@ -116,7 +127,17 @@ export const useCustomers = (userId: string) => {
     await deleteDoc(doc(db, 'users', userId, 'customers', id));
   };
 
-  return { customers, addCustomer, updateCustomer, deleteCustomer };
+  const clearCustomers = async () => {
+      const q = query(collection(db, 'users', userId, 'customers'));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+      });
+      await batch.commit();
+  };
+
+  return { customers, addCustomer, updateCustomer, deleteCustomer, clearCustomers };
 };
 
 export const useSavedProducts = (userId: string) => {
@@ -147,5 +168,15 @@ export const useSavedProducts = (userId: string) => {
     await deleteDoc(doc(db, 'users', userId, 'saved_products', id));
   };
 
-  return { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct };
+  const clearSavedProducts = async () => {
+      const q = query(collection(db, 'users', userId, 'saved_products'));
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+      });
+      await batch.commit();
+  };
+
+  return { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct, clearSavedProducts };
 };

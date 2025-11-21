@@ -24,10 +24,10 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) => {
   // Use Firestore hooks
-  const { warranties, loading: warrantiesLoading, addWarranty: addWarrantyToDb, updateWarranty: updateWarrantyInDb, deleteWarranty: deleteWarrantyFromDb, bulkDeleteWarranties } = useWarranties(user.uid);
+  const { warranties, loading: warrantiesLoading, addWarranty: addWarrantyToDb, updateWarranty: updateWarrantyInDb, deleteWarranty: deleteWarrantyFromDb, bulkDeleteWarranties, clearWarranties } = useWarranties(user.uid);
   const { settings, updateSettings } = useSettings(user.uid);
-  const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers(user.uid);
-  const { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct } = useSavedProducts(user.uid);
+  const { customers, addCustomer, updateCustomer, deleteCustomer, clearCustomers } = useCustomers(user.uid);
+  const { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct, clearSavedProducts } = useSavedProducts(user.uid);
   
   const [formSeedData, setFormSeedData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -206,6 +206,29 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
       updateSettings(newSettings);
   };
 
+  const handleClearData = async (type: 'warranties' | 'customers' | 'products' | 'all') => {
+      try {
+          if (type === 'warranties' || type === 'all') {
+              await clearWarranties();
+          }
+          if (type === 'customers' || type === 'all') {
+              await clearCustomers();
+          }
+          if (type === 'products' || type === 'all') {
+              await clearSavedProducts();
+          }
+          if (type === 'all') {
+               alert("Factory reset complete. All data has been cleared.");
+          } else {
+               alert(`${type.charAt(0).toUpperCase() + type.slice(1)} data cleared successfully.`);
+          }
+          setIsSettingsOpen(false); 
+      } catch (error) {
+          console.error("Error clearing data:", error);
+          alert("Failed to clear data. Please try again.");
+      }
+  };
+
   const handleViewCustomerWarranties = (customerName: string) => {
       setSearchTerm(customerName);
       setCurrentView('warranties');
@@ -362,6 +385,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
             currentSettings={settings}
             onSave={handleSaveSettings}
             onClose={handleCloseSettings}
+            onClearData={handleClearData}
         />
       )}
       
