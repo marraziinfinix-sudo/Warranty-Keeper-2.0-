@@ -325,6 +325,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         onSearchChange={setSearchTerm}
         onLogout={onLogout}
         companyName={companyName}
+        userEmail={user.email}
         currentView={currentView}
         onViewChange={setCurrentView}
       />
@@ -419,7 +420,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
       )}
 
       <footer className="text-center text-sm text-gray-500 py-4">
-        <span className="block">Logged in as {user.email}</span>
         Data is securely synced with the cloud in real-time.
       </footer>
     </div>

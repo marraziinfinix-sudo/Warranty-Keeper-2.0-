@@ -9,6 +9,7 @@ interface HeaderProps {
     onSearchChange: (term: string) => void;
     onLogout: () => void;
     companyName?: string;
+    userEmail?: string | null;
     currentView: 'warranties' | 'customers' | 'products' | 'services';
     onViewChange: (view: 'warranties' | 'customers' | 'products' | 'services') => void;
 }
@@ -20,6 +21,7 @@ const Header: React.FC<HeaderProps> = ({
     onSearchChange, 
     onLogout,
     companyName,
+    userEmail,
     currentView,
     onViewChange
 }) => {
@@ -27,13 +29,21 @@ const Header: React.FC<HeaderProps> = ({
         <header className="bg-white shadow-md sticky top-0 z-10">
             <div className="container mx-auto px-4 md:px-6 pt-4 pb-0">
                 <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-                    <div className="flex flex-col">
+                    <div className="flex flex-col max-w-[60%] sm:max-w-none">
                         <h1 className="text-2xl md:text-3xl font-bold text-brand-primary leading-tight">
                             Warranty Keeper
                         </h1>
-                        {companyName && (
-                            <span className="text-sm font-semibold text-gray-500">{companyName}</span>
-                        )}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2 text-sm text-gray-500 mt-1">
+                            {companyName && (
+                                <span className="font-bold truncate">{companyName}</span>
+                            )}
+                            {companyName && userEmail && (
+                                <span className="hidden sm:inline text-gray-300">|</span>
+                            )}
+                            {userEmail && (
+                                <span className="text-xs sm:text-sm truncate text-gray-400 sm:text-gray-500">{userEmail}</span>
+                            )}
+                        </div>
                     </div>
                     <div className="w-full md:w-auto md:flex-grow max-w-lg order-3 md:order-2">
                         <input
