@@ -10,6 +10,15 @@ export interface WarrantyStatusInfo {
 export const formatDate = (date: Date | string | undefined | null): string => {
   if (!date) return 'N/A';
 
+  // If it's a string in YYYY-MM-DD format, parse directly to preserve the intended day
+  if (typeof date === 'string') {
+      const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (match) {
+          const [_, year, month, day] = match;
+          return `${day}/${month}/${year}`;
+      }
+  }
+
   const dateObj = new Date(date);
   if (isNaN(dateObj.getTime())) {
     return 'Invalid Date';
@@ -28,7 +37,21 @@ export const formatDate = (date: Date | string | undefined | null): string => {
 
 export const calculateExpiryDate = (startDate: string | Date | undefined, period: number, unit: 'days' | 'weeks' | 'months' | 'years'): Date | null => {
     if (!startDate) return null;
-    const date = new Date(startDate);
+    
+    let date: Date;
+    if (typeof startDate === 'string') {
+        // Parse YYYY-MM-DD manually to create a local date object 
+        // This avoids the UTC conversion that happens with new Date("YYYY-MM-DD")
+        if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+            const [y, m, d] = startDate.split('-').map(Number);
+            date = new Date(y, m - 1, d); // Month is 0-indexed
+        } else {
+            date = new Date(startDate);
+        }
+    } else {
+        date = new Date(startDate);
+    }
+    
     if (isNaN(date.getTime())) return null;
 
     switch (unit) {
