@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Warranty, Product, AppSettings, WarrantyStatus } from './types';
-import { useWarranties, useSettings } from './hooks/useFirestore';
+import { Warranty, Product, AppSettings, WarrantyStatus, Customer, SavedProduct } from './types';
+import { useWarranties, useSettings, useCustomers, useSavedProducts } from './hooks/useFirestore';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyList from './components/WarrantyList';
 import CustomersView from './components/CustomersView';
@@ -25,6 +25,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   // Use Firestore hooks
   const { warranties, loading: warrantiesLoading, addWarranty: addWarrantyToDb, updateWarranty: updateWarrantyInDb, deleteWarranty: deleteWarrantyFromDb, bulkDeleteWarranties } = useWarranties(user.uid);
   const { settings, updateSettings } = useSettings(user.uid);
+  const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers(user.uid);
+  const { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct } = useSavedProducts(user.uid);
   
   const [formSeedData, setFormSeedData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -39,9 +41,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
   
   const productList = useMemo(() => {
-    const allProductNames = warranties.flatMap(w => w.products.map(p => p.productName));
-    return [...new Set(allProductNames)].sort();
-  }, [warranties]);
+    // Combine existing warranty products and saved products for auto-suggest
+    const warrantyProductNames = warranties.flatMap(w => w.products.map(p => p.productName));
+    const savedProductNames = savedProducts.map(p => p.name);
+    return [...new Set([...warrantyProductNames, ...savedProductNames])].sort();
+  }, [warranties, savedProducts]);
   
   const addWarranty = async (warranty: Omit<Warranty, 'id'>) => {
     const newWarranty: Warranty = { ...warranty, id: new Date().toISOString() };
@@ -54,7 +58,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
 
   const deleteWarranty = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this warranty record? This action cannot be undone.')) {
-        // We await here to ensure the UI doesn't glitch, but persistence makes this fast locally
         await deleteWarrantyFromDb(id);
     }
   };
@@ -84,8 +87,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
     if (!previewData) return;
     const data = previewData;
 
-    // Optimistic update: Close the modal immediately so the user can continue working.
-    // The database update happens in the background.
     setPreviewData(null);
 
     try {
@@ -94,8 +95,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         } else {
             await addWarranty(data);
         }
-        
-        // Trigger sharing after the data is queued for saving
         triggerShare(data, shareOptions);
     } catch (error) {
         console.error("Error saving warranty in background:", error);
@@ -117,11 +116,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   const handleOpenSettings = () => setIsSettingsOpen(true);
   const handleCloseSettings = () => setIsSettingsOpen(false);
   const handleSaveSettings = (newSettings: AppSettings) => {
-      // This triggers a background update
       updateSettings(newSettings);
   };
 
-  // Navigate from Customer List to Warranty List with a filter
   const handleViewCustomerWarranties = (customerName: string) => {
       setSearchTerm(customerName);
       setCurrentView('warranties');
@@ -234,15 +231,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         {currentView === 'customers' && (
             <CustomersView 
                 warranties={warranties} 
+                customers={customers}
                 searchTerm={searchTerm}
                 onViewCustomerWarranties={handleViewCustomerWarranties}
+                onAddCustomer={addCustomer}
+                onUpdateCustomer={updateCustomer}
+                onDeleteCustomer={deleteCustomer}
             />
         )}
 
         {currentView === 'products' && (
             <ProductsView 
-                warranties={warranties}
+                savedProducts={savedProducts}
                 searchTerm={searchTerm}
+                onAddProduct={addSavedProduct}
+                onUpdateProduct={updateSavedProduct}
+                onDeleteProduct={deleteSavedProduct}
             />
         )}
       </main>
@@ -253,6 +257,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
           onPreview={handlePreview}
           initialData={formSeedData}
           productList={productList}
+          customers={customers}
+          savedProducts={savedProducts}
         />
       )}
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Warranty, Product } from '../types';
+import { Warranty, Product, Customer, SavedProduct } from '../types';
 import { formatDate, calculateExpiryDate } from '../utils/warrantyUtils';
 import { PlusIcon, TrashIcon } from './icons/Icons';
 
@@ -9,6 +9,8 @@ interface WarrantyFormProps {
   onPreview: (warranty: Warranty | Omit<Warranty, 'id'>) => void;
   initialData: Warranty | Omit<Warranty, 'id'> | null;
   productList: string[];
+  customers: Customer[];
+  savedProducts: SavedProduct[];
 }
 
 const malaysianStates = [
@@ -18,7 +20,7 @@ const malaysianStates = [
 ];
 
 
-const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initialData, productList }) => {
+const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initialData, productList, customers, savedProducts }) => {
   const [formData, setFormData] = useState<Omit<Warranty, 'id'>>({
     customerName: '',
     phoneNumber: '',
@@ -62,6 +64,26 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    
+    if (name === 'customerName') {
+        // Check for auto-fill
+        const matchedCustomer = customers.find(c => c.name === value);
+        if (matchedCustomer) {
+            setFormData(prev => ({
+                ...prev,
+                customerName: value,
+                phoneNumber: matchedCustomer.phone,
+                email: matchedCustomer.email,
+                state: matchedCustomer.state,
+                district: matchedCustomer.district,
+                postcode: matchedCustomer.postcode,
+                buildingType: matchedCustomer.buildingType,
+                otherBuildingType: matchedCustomer.otherBuildingType || ''
+            }));
+            return;
+        }
+    }
+
     setFormData(prev => {
         const newState = { 
             ...prev, 
@@ -96,11 +118,18 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
     const newProducts = [...formData.products];
     const productToUpdate = { ...newProducts[index] };
 
-    if (name === 'productWarrantyPeriod') {
+    if (name === 'productName') {
+        // Auto-fill warranty defaults if matches saved product
+        const matchedProduct = savedProducts.find(p => p.name === value);
+        if (matchedProduct) {
+            productToUpdate.productWarrantyPeriod = matchedProduct.defaultWarrantyPeriod;
+            productToUpdate.productWarrantyUnit = matchedProduct.defaultWarrantyUnit;
+        }
+        (productToUpdate as any)[name] = value;
+    } else if (name === 'productWarrantyPeriod') {
       (productToUpdate as any)[name] = parseInt(value, 10) || 0;
     } else if (name === 'expiryReminderDays') {
         const val = parseInt(value, 10);
-        // If empty string or NaN, set to undefined to use global default
         (productToUpdate as any)[name] = isNaN(val) ? undefined : val;
     } else {
       (productToUpdate as any)[name] = value;
@@ -158,7 +187,19 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                     {/* Customer & Location */}
                     <h3 className="text-lg font-medium text-gray-800 mb-2">Customer & Location</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InputField label="Customer Name" name="customerName" value={formData.customerName} onChange={handleChange} required />
+                        <InputField 
+                            label="Customer Name" 
+                            name="customerName" 
+                            value={formData.customerName} 
+                            onChange={handleChange} 
+                            required 
+                            list="customer-list" 
+                            placeholder="Select or type name"
+                        />
+                        <datalist id="customer-list">
+                            {customers.map(c => <option key={c.id} value={c.name} />)}
+                        </datalist>
+
                         <InputField label="Phone Number" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required />
                         <InputField label="Email" name="email" type="email" value={formData.email} onChange={handleChange} />
                     </div>
@@ -207,7 +248,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                 <button type="button" onClick={() => removeProduct(index)} className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition">
                                     <TrashIcon />
                                 </button>
-                                <InputField label="Product Name" name="productName" value={product.productName} onChange={e => handleProductChange(index, e)} required list="product-list"/>
+                                <InputField label="Product Name" name="productName" value={product.productName} onChange={e => handleProductChange(index, e)} required list="product-list" placeholder="Select or type product"/>
                                 <InputField label="Serial Number" name="serialNumber" value={product.serialNumber} onChange={e => handleProductChange(index, e)} required />
                                 <div>
                                     <InputField label="Purchase Date" name="purchaseDate" type="date" value={product.purchaseDate} onChange={e => handleProductChange(index, e)} required />

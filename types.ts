@@ -37,3 +37,22 @@ export enum WarrantyStatus {
 export interface AppSettings {
   expiryReminderDays: number;
 }
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  state: string;
+  district: string;
+  postcode: string;
+  buildingType: 'home' | 'office' | 'others';
+  otherBuildingType?: string;
+}
+
+export interface SavedProduct {
+  id: string;
+  name: string;
+  defaultWarrantyPeriod: number;
+  defaultWarrantyUnit: 'days' | 'weeks' | 'months' | 'years';
+}

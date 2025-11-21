@@ -10,7 +10,7 @@ import {
   query,
   writeBatch
 } from 'firebase/firestore';
-import { Warranty, AppSettings } from '../types';
+import { Warranty, AppSettings, Customer, SavedProduct } from '../types';
 
 // Helper to remove undefined values which Firestore dislikes
 const sanitize = <T>(obj: T): T => {
@@ -87,3 +87,65 @@ export const useSettings = (userId: string) => {
 
     return { settings, updateSettings };
 }
+
+export const useCustomers = (userId: string) => {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  useEffect(() => {
+    if (!userId) {
+        setCustomers([]);
+        return;
+    }
+    const q = query(collection(db, 'users', userId, 'customers'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data() as Customer);
+      setCustomers(data.sort((a, b) => a.name.localeCompare(b.name)));
+    });
+    return () => unsubscribe();
+  }, [userId]);
+
+  const addCustomer = async (customer: Customer) => {
+    await setDoc(doc(db, 'users', userId, 'customers', customer.id), sanitize(customer));
+  };
+
+  const updateCustomer = async (customer: Customer) => {
+    await setDoc(doc(db, 'users', userId, 'customers', customer.id), sanitize(customer), { merge: true });
+  };
+
+  const deleteCustomer = async (id: string) => {
+    await deleteDoc(doc(db, 'users', userId, 'customers', id));
+  };
+
+  return { customers, addCustomer, updateCustomer, deleteCustomer };
+};
+
+export const useSavedProducts = (userId: string) => {
+  const [savedProducts, setSavedProducts] = useState<SavedProduct[]>([]);
+
+  useEffect(() => {
+    if (!userId) {
+        setSavedProducts([]);
+        return;
+    }
+    const q = query(collection(db, 'users', userId, 'saved_products'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data() as SavedProduct);
+      setSavedProducts(data.sort((a, b) => a.name.localeCompare(b.name)));
+    });
+    return () => unsubscribe();
+  }, [userId]);
+
+  const addSavedProduct = async (product: SavedProduct) => {
+    await setDoc(doc(db, 'users', userId, 'saved_products', product.id), sanitize(product));
+  };
+
+  const updateSavedProduct = async (product: SavedProduct) => {
+    await setDoc(doc(db, 'users', userId, 'saved_products', product.id), sanitize(product), { merge: true });
+  };
+
+  const deleteSavedProduct = async (id: string) => {
+    await deleteDoc(doc(db, 'users', userId, 'saved_products', id));
+  };
+
+  return { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct };
+};
