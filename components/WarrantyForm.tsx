@@ -362,14 +362,10 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                 name="serviceName" 
                                 value={formData.serviceName || ''} 
                                 onChange={handleChange} 
-                                list="service-list" 
+                                list="service-catalog-list" 
                                 placeholder="Select a service..."
                             />
-                            <datalist id="service-list">
-                                {savedServices.map(s => (
-                                    <option key={s.id} value={s.name}>{`Default: ${s.defaultWarrantyPeriod} ${s.defaultWarrantyUnit}`}</option>
-                                ))}
-                            </datalist>
+                            {/* Datalist moved to bottom of file to ensure it's always rendered */}
                             <div>
                                 <InputField label="Install Date" name="installDate" type="date" value={formData.installDate || ''} onChange={handleChange} />
                                 {formData.installDate && <p className="text-xs text-gray-500 mt-1 pr-1 text-right">Selected: {formatDate(formData.installDate)}</p>}
@@ -393,6 +389,14 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                             </div>
                         </div>
                     )}
+                    
+                    {/* Moved Service Datalist here to ensure availability */}
+                    <datalist id="service-catalog-list">
+                        {savedServices.map(s => (
+                            <option key={s.id} value={s.name}>{`Default: ${s.defaultWarrantyPeriod} ${s.defaultWarrantyUnit}`}</option>
+                        ))}
+                    </datalist>
+
                 </div>
                 <div className="bg-white border-t px-6 py-4 flex justify-end items-center flex-wrap gap-3">
                     <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">Cancel</button>
