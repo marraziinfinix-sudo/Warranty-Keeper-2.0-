@@ -213,6 +213,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                             required 
                             list="customer-list" 
                             placeholder="Select from saved list..."
+                            autoComplete="off"
                         />
                         {/* Strictly use saved customers list */}
                         <datalist id="customer-list">
@@ -277,6 +278,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                     required 
                                     list="product-list" 
                                     placeholder="Select from saved catalog..."
+                                    autoComplete="off"
                                 />
                                 <InputField label="Serial Number" name="serialNumber" value={product.serialNumber} onChange={e => handleProductChange(index, e)} required />
                                 <div>
@@ -364,6 +366,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                 onChange={handleChange} 
                                 list="service-catalog-list" 
                                 placeholder="Select a service..."
+                                autoComplete="off"
                             />
                             {/* Datalist moved to bottom of file to ensure it's always rendered */}
                             <div>
@@ -393,7 +396,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                     {/* Moved Service Datalist here to ensure availability */}
                     <datalist id="service-catalog-list">
                         {savedServices.map(s => (
-                            <option key={s.id} value={s.name}>{`Default: ${s.defaultWarrantyPeriod} ${s.defaultWarrantyUnit}`}</option>
+                            <option key={s.id} value={s.name} />
                         ))}
                     </datalist>
 
@@ -417,12 +420,24 @@ interface InputFieldProps {
     required?: boolean;
     placeholder?: string;
     list?: string;
+    autoComplete?: string;
 }
 
-const InputField: React.FC<InputFieldProps> = ({ label, name, value, onChange, type = "text", required = false, placeholder, list }) => (
+const InputField: React.FC<InputFieldProps> = ({ label, name, value, onChange, type = "text", required = false, placeholder, list, autoComplete }) => (
     <div>
         <label htmlFor={name} className="block text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500">*</span>}</label>
-        <input type={type} name={name} id={name} value={value} onChange={onChange} required={required} placeholder={placeholder} list={list} className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm" />
+        <input 
+            type={type} 
+            name={name} 
+            id={name} 
+            value={value} 
+            onChange={onChange} 
+            required={required} 
+            placeholder={placeholder} 
+            list={list}
+            autoComplete={autoComplete} 
+            className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm" 
+        />
     </div>
 );
 
