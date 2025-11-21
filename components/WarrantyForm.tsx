@@ -67,7 +67,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
     
     if (name === 'customerName') {
         // Check for auto-fill
-        const matchedCustomer = customers.find(c => c.name.toLowerCase() === value.toLowerCase());
+        const matchedCustomer = customers.find(c => c.name.toLowerCase() === value.trim().toLowerCase());
         if (matchedCustomer) {
             setFormData(prev => ({
                 ...prev,
@@ -85,8 +85,10 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
     }
     
     if (name === 'serviceName') {
-        const matchedService = savedServices.find(s => s.name.toLowerCase() === value.toLowerCase());
-        if(matchedService) {
+        const normalizedValue = value.trim().toLowerCase();
+        const matchedService = savedServices.find(s => s.name.toLowerCase() === normalizedValue);
+        
+        if (matchedService) {
             setFormData(prev => ({
                 ...prev,
                 serviceName: matchedService.name,
@@ -134,7 +136,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
 
     if (name === 'productName') {
         // Auto-fill warranty defaults if matches saved product
-        const matchedProduct = savedProducts.find(p => p.name.toLowerCase() === value.toLowerCase());
+        const matchedProduct = savedProducts.find(p => p.name.toLowerCase() === value.trim().toLowerCase());
         if (matchedProduct) {
             productToUpdate.productName = matchedProduct.name; // Use exact name
             productToUpdate.productWarrantyPeriod = matchedProduct.defaultWarrantyPeriod;
