@@ -77,11 +77,12 @@ const CustomersView: React.FC<CustomersViewProps> = ({
                     onClick={() => setIsModalOpen(true)}
                     className="flex items-center gap-2 px-3 py-2 bg-brand-primary text-white rounded-md text-sm hover:bg-blue-600 transition"
                 >
-                    <PlusIcon /> Add Customer
+                    <PlusIcon /> <span className="hidden sm:inline">Add Customer</span><span className="sm:hidden">Add</span>
                 </button>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop View - Table */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -151,6 +152,63 @@ const CustomersView: React.FC<CustomersViewProps> = ({
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile View - List of Cards */}
+            <div className="md:hidden">
+                {filteredCustomers.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500 text-sm">
+                         {customers.length === 0 
+                            ? "No saved customers yet. Add one to get started." 
+                            : "No customers found matching your search."}
+                    </div>
+                ) : (
+                    <ul className="divide-y divide-gray-200">
+                        {filteredCustomers.map((customer) => (
+                            <li key={customer.id} className="p-4 flex flex-col gap-3 hover:bg-gray-50 transition-colors">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-sm font-bold text-gray-900">{customer.name}</h3>
+                                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-1 capitalize">
+                                            <BuildingIcon /> {customer.buildingType === 'others' ? customer.otherBuildingType : customer.buildingType}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                         <button onClick={() => handleEdit(customer)} className="p-2 text-gray-500 hover:text-brand-primary rounded-full hover:bg-gray-100"><EditIcon /></button>
+                                         <button onClick={() => handleDelete(customer.id)} className="p-2 text-gray-500 hover:text-brand-danger rounded-full hover:bg-gray-100"><TrashIcon /></button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-2 text-sm text-gray-600">
+                                    <div>
+                                         <div className="text-gray-900 font-medium">{customer.phone}</div>
+                                         {customer.email && <div className="text-xs flex items-center gap-1 mt-0.5 text-gray-500"><EmailIcon /> {customer.email}</div>}
+                                    </div>
+                                    <div className="flex items-start gap-1 bg-gray-50 p-2 rounded">
+                                        <div className="mt-0.5 text-gray-400"><LocationPinIcon /></div>
+                                        <div className="text-xs">
+                                            <p className="font-medium text-gray-700">{customer.district}, {customer.state}</p>
+                                            <p className="text-gray-400">{customer.postcode}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end items-center pt-2 border-t border-gray-100">
+                                     {customerWarrantyCounts[customer.name.toLowerCase()] ? (
+                                        <button 
+                                            onClick={() => onViewCustomerWarranties(customer.name)}
+                                            className="w-full px-3 py-2 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition text-center"
+                                        >
+                                            View {customerWarrantyCounts[customer.name.toLowerCase()]} Warranties
+                                        </button>
+                                    ) : (
+                                        <span className="text-xs text-gray-400 italic w-full text-center py-1">No warranties recorded</span>
+                                    )}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
 
             {isModalOpen && (
