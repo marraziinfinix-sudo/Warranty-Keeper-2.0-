@@ -8,6 +8,7 @@ import CustomersView from './components/CustomersView';
 import ProductsView from './components/ProductsView';
 import ServicesView from './components/ServicesView';
 import Header from './components/Header';
+import MobileNavBar from './components/MobileNavBar';
 import WarrantyPreviewModal from './components/WarrantyPreviewModal';
 import SaveEntitiesModal from './components/SaveEntitiesModal';
 import { triggerShare, getWarrantyStatusInfo, exportWarrantiesToCSV } from './utils/warrantyUtils';
@@ -330,7 +331,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         onViewChange={setCurrentView}
       />
 
-      <main className="container mx-auto p-3 md:p-6 lg:p-8 flex-grow">
+      <main className="container mx-auto p-3 md:p-6 lg:p-8 flex-grow pb-20 md:pb-8">
         {currentView === 'warranties' && (
             <WarrantyList
             warranties={filteredWarranties}
@@ -379,6 +380,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
             />
         )}
       </main>
+      
+      <MobileNavBar 
+        currentView={currentView} 
+        onViewChange={setCurrentView} 
+      />
 
       {isFormOpen && (
         <WarrantyForm
@@ -419,7 +425,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         />
       )}
 
-      <footer className="text-center text-xs md:text-sm text-gray-500 py-4 px-2">
+      <footer className="text-center text-xs md:text-sm text-gray-500 py-4 px-2 hidden md:block">
         Data is securely synced with the cloud in real-time.
       </footer>
     </div>

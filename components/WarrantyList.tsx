@@ -90,7 +90,7 @@ const WarrantyList: React.FC<WarrantyListProps> = ({
       )}
 
       {numSelected > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] z-20 safe-area-pb">
+        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] z-30 safe-area-pb">
           <div className="container mx-auto p-3 md:p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
             <p className="font-semibold text-brand-primary text-sm sm:text-base">{numSelected} record{numSelected > 1 ? 's' : ''} selected</p>
             <div className="flex items-center gap-2 w-full sm:w-auto">

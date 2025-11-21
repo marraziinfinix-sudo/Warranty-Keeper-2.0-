@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
     return (
         <header className="bg-white shadow-md sticky top-0 z-30">
-            <div className="container mx-auto px-3 md:px-6 pt-3 md:pt-4 pb-0">
+            <div className="container mx-auto px-3 md:px-6 pt-3 md:pt-4 pb-3 md:pb-0">
                 {/* Top Row: Title/Info & Actions */}
                 <div className="flex justify-between items-start gap-2 md:items-center mb-3 md:mb-4">
                     {/* Left: Title & Company Info */}
@@ -78,7 +78,7 @@ const Header: React.FC<HeaderProps> = ({
                 </div>
 
                 {/* Middle Row: Search (Full width on mobile, auto on desktop) */}
-                <div className="mb-3 md:mb-4">
+                <div className="mb-0 md:mb-4">
                     <input
                         type="text"
                         placeholder={`Search ${currentView}...`}
@@ -88,8 +88,8 @@ const Header: React.FC<HeaderProps> = ({
                     />
                 </div>
 
-                {/* Bottom Row: Navigation Tabs */}
-                <div className="flex space-x-1 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 md:mx-0 md:px-0">
+                {/* Bottom Row: Navigation Tabs (Desktop Only) */}
+                <div className="hidden md:flex space-x-1 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 md:mx-0 md:px-0">
                     <TabButton 
                         isActive={currentView === 'warranties'} 
                         onClick={() => onViewChange('warranties')} 
