@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Warranty, Product, Customer, SavedProduct, SavedService } from '../types';
 import { formatDate, calculateExpiryDate } from '../utils/warrantyUtils';
-import { PlusIcon, TrashIcon } from './icons/Icons';
+import { PlusIcon, TrashIcon, RefreshIcon } from './icons/Icons';
 
 interface WarrantyFormProps {
   onClose: () => void;
@@ -181,6 +181,27 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
         }
         return newState;
     });
+  };
+
+  const handleClear = () => {
+    if (window.confirm("Are you sure you want to clear all fields? This will remove all entered data.")) {
+         setFormData({
+            customerName: '',
+            phoneNumber: '',
+            email: '',
+            products: [],
+            servicesProvided: { supply: false, install: false },
+            serviceName: '',
+            installDate: '',
+            installationWarrantyPeriod: 0,
+            installationWarrantyUnit: 'months',
+            postcode: '',
+            district: '',
+            state: '',
+            buildingType: 'home',
+            otherBuildingType: '',
+        });
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -401,9 +422,19 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                     </datalist>
 
                 </div>
-                <div className="bg-white border-t px-6 py-4 flex justify-end items-center flex-wrap gap-3">
-                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">Cancel</button>
-                    <button type="submit" className="px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-blue-600 transition">Preview Details</button>
+                <div className="bg-white border-t px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+                     <button 
+                        type="button" 
+                        onClick={handleClear} 
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition border border-transparent hover:border-red-200"
+                        title="Clear all fields"
+                    >
+                        <RefreshIcon /> Clear Form
+                    </button>
+                    <div className="flex w-full sm:w-auto gap-3">
+                        <button type="button" onClick={onClose} className="flex-1 sm:flex-none px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">Cancel</button>
+                        <button type="submit" className="flex-1 sm:flex-none px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-blue-600 transition">Preview Details</button>
+                    </div>
                 </div>
             </form>
         </div>
