@@ -53,7 +53,7 @@ const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({ warranty, onC
         if (firstUnexpiredProduct) {
             subjectTarget = firstUnexpiredProduct.productName;
         } else if (isInstallationUnexpired) {
-            subjectTarget = 'Installation Service';
+            subjectTarget = warranty.serviceName || 'Installation Service';
         }
         
         const subject = `Warranty Expiry Reminder - ${subjectTarget}`;
@@ -110,9 +110,10 @@ const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({ warranty, onC
             </div>
 
             <h3 className="text-lg font-semibold text-gray-800 mt-4 border-b pb-2">Service Details</h3>
-            <DetailRow label="Services Provided" value={getServiceText(warranty.servicesProvided)} />
+            <DetailRow label="Services Provided" value={getServiceText(warranty.servicesProvided, warranty.serviceName)} />
             {warranty.servicesProvided?.install && (
                 <>
+                    {warranty.serviceName && <DetailRow label="Service Name" value={warranty.serviceName} />}
                     {warranty.installDate ? <DetailRow label="Installation Date" value={formatDate(warranty.installDate)} /> : null}
                     <DetailRow label="Installation Warranty" value={installationWarrantyText} />
                     {installationExpiryDate && (

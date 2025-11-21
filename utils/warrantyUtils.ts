@@ -162,7 +162,7 @@ export const formatWarrantyText = (period: number, unit: 'days' | 'weeks' | 'mon
     return `${period} ${unitName}`;
 }
 
-export const getServiceText = (services?: { supply: boolean; install: boolean; }): string => {
+export const getServiceText = (services?: { supply: boolean; install: boolean; }, serviceName?: string): string => {
     if (!services) return 'N/A';
     const { supply, install } = services;
 
@@ -170,10 +170,10 @@ export const getServiceText = (services?: { supply: boolean; install: boolean; }
         return 'Supply Only';
     }
     if (!supply && install) {
-        return 'Install';
+        return serviceName || 'Install';
     }
     if (supply && install) {
-        return 'Supply & Install';
+        return `Supply & ${serviceName || 'Install'}`;
     }
     
     return 'N/A'; // In case both are false
@@ -216,7 +216,7 @@ export const generateShareMessage = (warranty: Omit<Warranty, 'id'> | Warranty, 
 
         if (warranty.servicesProvided?.install && isInstallationUnexpired) {
             message += `--- Service Information ---\n`;
-            message += `Service Type: Installation\n`;
+            message += `Service Type: ${warranty.serviceName || 'Installation'}\n`;
             message += `Installation Date: ${formatDate(warranty.installDate)}\n`;
             message += `Installation Warranty: ${formatWarrantyText(warranty.installationWarrantyPeriod, warranty.installationWarrantyUnit)}\n`;
             message += `Installation Warranty Expires: ${installationExpiry ? formatDate(installationExpiry) : 'N/A'}\n\n`;
@@ -245,10 +245,11 @@ export const generateShareMessage = (warranty: Omit<Warranty, 'id'> | Warranty, 
         }
         
         message += `--- Service Information ---\n`;
-        message += `Services Provided: ${getServiceText(warranty.servicesProvided)}\n`;
+        message += `Services Provided: ${getServiceText(warranty.servicesProvided, warranty.serviceName)}\n`;
         
         if (warranty.servicesProvided?.install) {
             const installationExpiry = warranty.installDate ? calculateExpiryDate(warranty.installDate, warranty.installationWarrantyPeriod, warranty.installationWarrantyUnit) : null;
+            if (warranty.serviceName) message += `Service Name: ${warranty.serviceName}\n`;
             message += `Installation Date: ${formatDate(warranty.installDate)}\n`;
             if (warranty.installationWarrantyPeriod > 0) {
                 message += `Installation Warranty: ${formatWarrantyText(warranty.installationWarrantyPeriod, warranty.installationWarrantyUnit)}\n`;
@@ -301,7 +302,7 @@ const escapeCSV = (value: any): string => {
 
 export const exportWarrantiesToCSV = (warranties: Warranty[]) => {
   const headers = [
-    'id', 'customerName', 'phoneNumber', 'email', 'servicesProvided',
+    'id', 'customerName', 'phoneNumber', 'email', 'servicesProvided', 'serviceName',
     'installDate', 'installationWarrantyPeriod', 'installationWarrantyUnit',
     'postcode', 'district', 'state', 'buildingType', 'otherBuildingType',
     'productName', 'serialNumber', 'purchaseDate', 'productWarrantyPeriod', 'productWarrantyUnit',
@@ -310,7 +311,7 @@ export const exportWarrantiesToCSV = (warranties: Warranty[]) => {
 
   const rows = warranties.flatMap(w => {
     const commonData = [
-      w.id, w.customerName, w.phoneNumber, w.email, getServiceText(w.servicesProvided),
+      w.id, w.customerName, w.phoneNumber, w.email, getServiceText(w.servicesProvided), w.serviceName || '',
       w.installDate ? formatDate(w.installDate) : '', w.installationWarrantyPeriod, w.installationWarrantyUnit,
       w.postcode, w.district, w.state, w.buildingType, w.otherBuildingType || ''
     ];

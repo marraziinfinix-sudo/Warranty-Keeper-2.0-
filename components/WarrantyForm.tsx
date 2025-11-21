@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Warranty, Product, Customer, SavedProduct } from '../types';
+import { Warranty, Product, Customer, SavedProduct, SavedService } from '../types';
 import { formatDate, calculateExpiryDate } from '../utils/warrantyUtils';
 import { PlusIcon, TrashIcon } from './icons/Icons';
 
@@ -10,6 +10,7 @@ interface WarrantyFormProps {
   initialData: Warranty | Omit<Warranty, 'id'> | null;
   customers: Customer[];
   savedProducts: SavedProduct[];
+  savedServices: SavedService[];
 }
 
 const malaysianStates = [
@@ -19,13 +20,14 @@ const malaysianStates = [
 ];
 
 
-const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initialData, customers, savedProducts }) => {
+const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initialData, customers, savedProducts, savedServices }) => {
   const [formData, setFormData] = useState<Omit<Warranty, 'id'>>({
     customerName: '',
     phoneNumber: '',
     email: '',
     products: [],
     servicesProvided: { supply: false, install: false },
+    serviceName: '',
     installDate: '',
     installationWarrantyPeriod: 0,
     installationWarrantyUnit: 'months',
@@ -47,6 +49,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
             expiryReminderDays: p.expiryReminderDays // Ensure this is copied
         })),
         servicesProvided: initialData.servicesProvided ?? { supply: false, install: !!initialData.installDate },
+        serviceName: initialData.serviceName ?? '',
         installDate: initialData.installDate ?? '',
         installationWarrantyPeriod: initialData.installationWarrantyPeriod ?? 0,
         installationWarrantyUnit: initialData.installationWarrantyUnit ?? 'months',
@@ -80,6 +83,19 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
             return;
         }
     }
+    
+    if (name === 'serviceName') {
+        const matchedService = savedServices.find(s => s.name.toLowerCase() === value.toLowerCase());
+        if(matchedService) {
+            setFormData(prev => ({
+                ...prev,
+                serviceName: matchedService.name,
+                installationWarrantyPeriod: matchedService.defaultWarrantyPeriod,
+                installationWarrantyUnit: matchedService.defaultWarrantyUnit,
+            }));
+            return;
+        }
+    }
 
     setFormData(prev => {
         const newState = { 
@@ -102,6 +118,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
             return {
                 ...prev,
                 servicesProvided: newServices,
+                serviceName: '',
                 installDate: '',
                 installationWarrantyPeriod: 0
             };
@@ -337,7 +354,20 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                     
                     {/* Installation Fields - Conditional */}
                     {formData.servicesProvided?.install && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-md bg-gray-50">
+                             <InputField 
+                                label="Service Name" 
+                                name="serviceName" 
+                                value={formData.serviceName || ''} 
+                                onChange={handleChange} 
+                                list="service-list" 
+                                placeholder="Select a service..."
+                            />
+                            <datalist id="service-list">
+                                {savedServices.map(s => (
+                                    <option key={s.id} value={s.name}>{`Default: ${s.defaultWarrantyPeriod} ${s.defaultWarrantyUnit}`}</option>
+                                ))}
+                            </datalist>
                             <div>
                                 <InputField label="Install Date" name="installDate" type="date" value={formData.installDate || ''} onChange={handleChange} />
                                 {formData.installDate && <p className="text-xs text-gray-500 mt-1 pr-1 text-right">Selected: {formatDate(formData.installDate)}</p>}

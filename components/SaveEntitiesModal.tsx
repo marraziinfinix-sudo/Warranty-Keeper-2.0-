@@ -1,22 +1,25 @@
 
 import React, { useState } from 'react';
-import { Customer, SavedProduct } from '../types';
-import { UsersIcon, CubeIcon } from './icons/Icons';
+import { Customer, SavedProduct, SavedService } from '../types';
+import { UsersIcon, CubeIcon, WrenchIcon } from './icons/Icons';
 
 interface SaveEntitiesModalProps {
   newCustomer: Customer | null;
   newProducts: SavedProduct[];
-  onConfirm: (saveCustomer: boolean, productsToSave: string[]) => void;
+  newService: SavedService | null;
+  onConfirm: (saveCustomer: boolean, productsToSave: string[], saveService: boolean) => void;
   onCancel: () => void; // Acts as "Skip"
 }
 
 const SaveEntitiesModal: React.FC<SaveEntitiesModalProps> = ({ 
   newCustomer, 
   newProducts, 
+  newService,
   onConfirm, 
   onCancel 
 }) => {
   const [saveCustomer, setSaveCustomer] = useState(!!newCustomer);
+  const [saveService, setSaveService] = useState(!!newService);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
     new Set(newProducts.map(p => p.name)) // Default select all new products
   );
@@ -32,7 +35,7 @@ const SaveEntitiesModal: React.FC<SaveEntitiesModalProps> = ({
   };
 
   const handleConfirm = () => {
-    onConfirm(saveCustomer, Array.from(selectedProducts));
+    onConfirm(saveCustomer, Array.from(selectedProducts), saveService);
   };
 
   return (
@@ -49,7 +52,7 @@ const SaveEntitiesModal: React.FC<SaveEntitiesModalProps> = ({
                 We noticed some new information. Would you like to save these to your master lists for quicker entry next time?
             </p>
 
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
                 {newCustomer && (
                     <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
                         <label className="flex items-start cursor-pointer">
@@ -70,13 +73,34 @@ const SaveEntitiesModal: React.FC<SaveEntitiesModalProps> = ({
                         </label>
                     </div>
                 )}
+                
+                 {newService && (
+                    <div className="bg-green-50 border border-green-100 rounded-lg p-3">
+                        <label className="flex items-start cursor-pointer">
+                            <div className="flex items-center h-5">
+                                <input 
+                                    type="checkbox" 
+                                    checked={saveService}
+                                    onChange={(e) => setSaveService(e.target.checked)}
+                                    className="focus:ring-brand-primary h-4 w-4 text-brand-primary border-gray-300 rounded" 
+                                />
+                            </div>
+                            <div className="ml-3 text-sm">
+                                <span className="font-medium text-gray-900 flex items-center gap-2">
+                                    <WrenchIcon /> Save New Service
+                                </span>
+                                <p className="text-gray-500 mt-1">{newService.name}</p>
+                            </div>
+                        </label>
+                    </div>
+                )}
 
                 {newProducts.length > 0 && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                         <p className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
                             <CubeIcon /> Save New Products
                         </p>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                        <div className="space-y-2">
                             {newProducts.map((product) => (
                                 <label key={product.name} className="flex items-center cursor-pointer">
                                     <input 

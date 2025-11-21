@@ -14,10 +14,11 @@ export interface Warranty {
   phoneNumber: string;
   email: string;
   products: Product[];
-  servicesProvided?: { // Add new services field
+  servicesProvided?: {
     supply: boolean;
     install: boolean;
   };
+  serviceName?: string; // To store the specific service from the catalog
   installDate?: string; // YYYY-MM-DD, optional
   installationWarrantyPeriod: number; // The number for the warranty period
   installationWarrantyUnit: 'days' | 'weeks' | 'months' | 'years'; // The unit for the period
@@ -51,6 +52,13 @@ export interface Customer {
 }
 
 export interface SavedProduct {
+  id: string;
+  name: string;
+  defaultWarrantyPeriod: number;
+  defaultWarrantyUnit: 'days' | 'weeks' | 'months' | 'years';
+}
+
+export interface SavedService {
   id: string;
   name: string;
   defaultWarrantyPeriod: number;

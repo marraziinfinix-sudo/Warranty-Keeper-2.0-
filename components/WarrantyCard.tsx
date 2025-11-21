@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { Warranty, WarrantyStatus, AppSettings } from '../types';
 import WarrantyStatusBadge from './WarrantyStatusBadge';
-import { EditIcon, TrashIcon, CalendarIcon, UserIcon, SerialIcon, NotificationBellIcon, EmailIcon, WhatsAppIcon, LocationPinIcon, BuildingIcon, ToolboxIcon } from './icons/Icons';
+import { EditIcon, TrashIcon, CalendarIcon, UserIcon, SerialIcon, NotificationBellIcon, EmailIcon, WhatsAppIcon, LocationPinIcon, BuildingIcon, ToolboxIcon, WrenchIcon } from './icons/Icons';
 import WarrantyDetailModal from './WarrantyDetailModal';
 import { getWarrantyStatusInfo, formatDate, calculateExpiryDate, formatPhoneNumberForWhatsApp, generateShareMessage, getEarliestProductExpiry, getServiceText } from '../utils/warrantyUtils';
 
@@ -62,7 +63,7 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete,
         if (firstUnexpiredProduct) {
             subjectTarget = firstUnexpiredProduct.productName;
         } else if (isInstallationUnexpired) {
-            subjectTarget = 'Installation Service';
+            subjectTarget = warranty.serviceName || 'Installation Service';
         }
 
         const subject = `Warranty Expiry Reminder - ${subjectTarget}`;
@@ -78,7 +79,7 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete,
   
   const primaryProduct = warranty.products?.[0];
   const additionalProductsCount = warranty.products?.length > 1 ? warranty.products.length - 1 : 0;
-  const cardTitle = primaryProduct?.productName || `${getServiceText(warranty.servicesProvided)} Warranty`;
+  const cardTitle = primaryProduct?.productName || `${getServiceText(warranty.servicesProvided, warranty.serviceName)} Warranty`;
 
   return (
     <>
@@ -154,8 +155,8 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete,
               )}
               {warranty.servicesProvided?.install && installationExpiryDate && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <CalendarIcon />
-                    <span>Installation expires: {formatDate(installationExpiryDate)}</span>
+                    <WrenchIcon />
+                    <span>{warranty.serviceName || 'Installation'} expires: {formatDate(installationExpiryDate)}</span>
                 </div>
               )}
               {warranty.servicesProvided?.supply && !warranty.servicesProvided?.install && (
