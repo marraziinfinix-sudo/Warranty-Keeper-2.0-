@@ -31,7 +31,7 @@ export interface Warranty {
 
 export enum WarrantyStatus {
     Active = 'Active',
-    ExpiringSoon = 'Expiring Soon',
+    ExpiringSoon = 'Expiring',
     Expired = 'Expired'
 }
 

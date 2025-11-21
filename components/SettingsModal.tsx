@@ -53,7 +53,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
             <div className="space-y-6">
                 <div>
                     <h3 className="text-lg font-semibold text-gray-800">Notification Preferences</h3>
-                    <p className="text-sm text-gray-500 mt-1">Configure when you see the 'Expiring Soon' status.</p>
+                    <p className="text-sm text-gray-500 mt-1">Configure when you see the 'Expiring' status.</p>
                     <div className="flex items-center gap-4 mt-3">
                         <label htmlFor="expiryReminderDays" className="block text-sm font-medium text-gray-700">Remind me</label>
                         <input
