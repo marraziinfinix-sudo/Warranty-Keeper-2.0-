@@ -8,7 +8,6 @@ interface WarrantyFormProps {
   onClose: () => void;
   onPreview: (warranty: Warranty | Omit<Warranty, 'id'>) => void;
   initialData: Warranty | Omit<Warranty, 'id'> | null;
-  productList: string[];
   customers: Customer[];
   savedProducts: SavedProduct[];
 }
@@ -20,7 +19,7 @@ const malaysianStates = [
 ];
 
 
-const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initialData, productList, customers, savedProducts }) => {
+const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initialData, customers, savedProducts }) => {
   const [formData, setFormData] = useState<Omit<Warranty, 'id'>>({
     customerName: '',
     phoneNumber: '',
@@ -39,8 +38,6 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
 
   useEffect(() => {
     if (initialData) {
-      // The migration in App.tsx should handle the heavy lifting.
-      // This part just populates the form with the correct new structure.
       setFormData({
         customerName: initialData.customerName,
         phoneNumber: initialData.phoneNumber,
@@ -179,11 +176,6 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
   
   const formInputStyles = "mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm";
 
-  // Filter out saved products from the historical product list to avoid duplicates in the datalist
-  const historicalProducts = productList.filter(name => 
-    !savedProducts.some(sp => sp.name.toLowerCase() === name.toLowerCase())
-  );
-  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4" onClick={onClose}>
         <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -201,8 +193,9 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                             onChange={handleChange} 
                             required 
                             list="customer-list" 
-                            placeholder="Select from list or type new..."
+                            placeholder="Select from saved list..."
                         />
+                        {/* Strictly use saved customers list */}
                         <datalist id="customer-list">
                             {customers.map(c => (
                                 <option key={c.id} value={c.name}>{`Phone: ${c.phone}`}</option>
@@ -264,7 +257,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                     onChange={e => handleProductChange(index, e)} 
                                     required 
                                     list="product-list" 
-                                    placeholder="Select from catalog or type new..."
+                                    placeholder="Select from saved catalog..."
                                 />
                                 <InputField label="Serial Number" name="serialNumber" value={product.serialNumber} onChange={e => handleProductChange(index, e)} required />
                                 <div>
@@ -308,13 +301,10 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                         ))}
                     </div>
                     
-                    {/* Product Data List source */}
+                    {/* Strictly use saved products list */}
                      <datalist id="product-list">
                         {savedProducts.map(p => (
                             <option key={p.id} value={p.name}>{`Default: ${p.defaultWarrantyPeriod} ${p.defaultWarrantyUnit}`}</option>
-                        ))}
-                        {historicalProducts.map(productName => (
-                            <option key={productName} value={productName} />
                         ))}
                     </datalist>
                     

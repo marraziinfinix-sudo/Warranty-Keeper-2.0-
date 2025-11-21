@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Warranty, Product, AppSettings, WarrantyStatus, Customer, SavedProduct } from './types';
+import { Warranty, AppSettings, WarrantyStatus, Customer, SavedProduct } from './types';
 import { useWarranties, useSettings, useCustomers, useSavedProducts } from './hooks/useFirestore';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyList from './components/WarrantyList';
@@ -51,13 +51,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
-  
-  const productList = useMemo(() => {
-    // Combine existing warranty products and saved products for auto-suggest
-    const warrantyProductNames = warranties.flatMap(w => w.products.map(p => p.productName));
-    const savedProductNames = savedProducts.map(p => p.name);
-    return [...new Set([...warrantyProductNames, ...savedProductNames])].sort();
-  }, [warranties, savedProducts]);
   
   const addWarranty = async (warranty: Omit<Warranty, 'id'>) => {
     const newWarranty: Warranty = { ...warranty, id: new Date().toISOString() };
@@ -350,7 +343,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
           onClose={handleCloseForm}
           onPreview={handlePreview}
           initialData={formSeedData}
-          productList={productList}
           customers={customers}
           savedProducts={savedProducts}
         />
