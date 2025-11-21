@@ -54,11 +54,12 @@ const ProductsView: React.FC<ProductsViewProps> = ({
                     onClick={() => setIsModalOpen(true)}
                     className="flex items-center gap-2 px-3 py-2 bg-brand-primary text-white rounded-md text-sm hover:bg-blue-600 transition"
                 >
-                    <PlusIcon /> Add Product
+                    <PlusIcon /> <span className="hidden sm:inline">Add Product</span><span className="sm:hidden">Add</span>
                 </button>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop View - Table */}
+            <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
@@ -94,10 +95,10 @@ const ProductsView: React.FC<ProductsViewProps> = ({
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex justify-end gap-2">
-                                            <button onClick={() => handleEdit(product)} className="text-gray-500 hover:text-brand-primary">
+                                            <button onClick={() => handleEdit(product)} className="text-gray-500 hover:text-brand-primary p-1">
                                                 <EditIcon />
                                             </button>
-                                            <button onClick={() => handleDelete(product.id)} className="text-gray-500 hover:text-brand-danger">
+                                            <button onClick={() => handleDelete(product.id)} className="text-gray-500 hover:text-brand-danger p-1">
                                                 <TrashIcon />
                                             </button>
                                         </div>
@@ -107,6 +108,43 @@ const ProductsView: React.FC<ProductsViewProps> = ({
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile View - List of Cards */}
+            <div className="md:hidden">
+                {filteredProducts.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500 text-sm">
+                         {savedProducts.length === 0 
+                            ? "No saved products. Add one to get started." 
+                            : "No products found matching your search."}
+                    </div>
+                ) : (
+                    <ul className="divide-y divide-gray-200">
+                        {filteredProducts.map((product) => (
+                            <li key={product.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center gap-3 min-w-0 overflow-hidden">
+                                    <div className="p-2 bg-blue-50 rounded-lg text-brand-primary flex-shrink-0">
+                                        <CubeIcon />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
+                                        <p className="text-xs text-gray-500 mt-0.5 truncate">
+                                            Warranty: {formatWarrantyText(product.defaultWarrantyPeriod, product.defaultWarrantyUnit)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+                                    <button onClick={() => handleEdit(product)} className="p-2 text-gray-500 hover:text-brand-primary rounded-full hover:bg-gray-100">
+                                        <EditIcon />
+                                    </button>
+                                    <button onClick={() => handleDelete(product.id)} className="p-2 text-gray-500 hover:text-brand-danger rounded-full hover:bg-gray-100">
+                                        <TrashIcon />
+                                    </button>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
 
              {isModalOpen && (
