@@ -1,8 +1,11 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Warranty, Product, AppSettings, WarrantyStatus } from './types';
 import { useWarranties, useSettings } from './hooks/useFirestore';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyList from './components/WarrantyList';
+import CustomersView from './components/CustomersView';
+import ProductsView from './components/ProductsView';
 import Header from './components/Header';
 import WarrantyPreviewModal from './components/WarrantyPreviewModal';
 import { triggerShare, getWarrantyStatusInfo, exportWarrantiesToCSV } from './utils/warrantyUtils';
@@ -27,7 +30,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [previewData, setPreviewData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
+  
+  // Navigation & Search State
+  const [currentView, setCurrentView] = useState<'warranties' | 'customers' | 'products'>('warranties');
   const [searchTerm, setSearchTerm] = useState('');
+  
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
   
@@ -114,10 +121,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
       updateSettings(newSettings);
   };
 
+  // Navigate from Customer List to Warranty List with a filter
+  const handleViewCustomerWarranties = (customerName: string) => {
+      setSearchTerm(customerName);
+      setCurrentView('warranties');
+  };
+
   const filteredWarranties = useMemo(() => {
     let result = warranties;
 
-    if (searchTerm) {
+    if (searchTerm && currentView === 'warranties') {
       const lowercasedTerm = searchTerm.toLowerCase();
       result = result.filter(w =>
         (w.customerName || '').toLowerCase().includes(lowercasedTerm) ||
@@ -139,7 +152,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
     }
 
     return result;
-  }, [warranties, searchTerm, statusFilter, settings.expiryReminderDays]);
+  }, [warranties, searchTerm, statusFilter, settings.expiryReminderDays, currentView]);
   
   const handleSelectionChange = (id: string) => {
     setSelectedWarranties(prev => {
@@ -182,7 +195,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="flex flex-col items-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mb-4"></div>
-                <p className="text-gray-500">Loading warranties...</p>
+                <p className="text-gray-500">Loading data...</p>
             </div>
         </div>
     );
@@ -197,22 +210,41 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         onSearchChange={setSearchTerm}
         onLogout={onLogout}
         companyName={companyName}
+        currentView={currentView}
+        onViewChange={setCurrentView}
       />
 
       <main className="container mx-auto p-4 md:p-6 lg:p-8 flex-grow">
-        <WarrantyList
-          warranties={filteredWarranties}
-          onEdit={handleEdit}
-          onDelete={deleteWarranty}
-          settings={settings}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          selectedWarranties={selectedWarranties}
-          onSelectionChange={handleSelectionChange}
-          onSelectAll={handleSelectAll}
-          onBulkDelete={handleBulkDelete}
-          onBulkExportCSV={handleBulkExportCSV}
-        />
+        {currentView === 'warranties' && (
+            <WarrantyList
+            warranties={filteredWarranties}
+            onEdit={handleEdit}
+            onDelete={deleteWarranty}
+            settings={settings}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            selectedWarranties={selectedWarranties}
+            onSelectionChange={handleSelectionChange}
+            onSelectAll={handleSelectAll}
+            onBulkDelete={handleBulkDelete}
+            onBulkExportCSV={handleBulkExportCSV}
+            />
+        )}
+
+        {currentView === 'customers' && (
+            <CustomersView 
+                warranties={warranties} 
+                searchTerm={searchTerm}
+                onViewCustomerWarranties={handleViewCustomerWarranties}
+            />
+        )}
+
+        {currentView === 'products' && (
+            <ProductsView 
+                warranties={warranties}
+                searchTerm={searchTerm}
+            />
+        )}
       </main>
 
       {isFormOpen && (
