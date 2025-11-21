@@ -218,7 +218,7 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                         {/* Strictly use saved customers list */}
                         <datalist id="customer-list">
                             {customers.map(c => (
-                                <option key={c.id} value={c.name}>{`Phone: ${c.phone}`}</option>
+                                <option key={c.id} value={c.name} />
                             ))}
                         </datalist>
 
