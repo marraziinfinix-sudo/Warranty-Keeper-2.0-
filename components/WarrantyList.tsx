@@ -28,26 +28,27 @@ const WarrantyList: React.FC<WarrantyListProps> = ({
 
   return (
     <div className="relative">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      {/* Controls Bar */}
+      <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100 md:bg-transparent md:shadow-none md:border-none md:p-0">
         <div className="flex items-center">
             <input 
               type="checkbox"
               id="select-all"
-              className="h-5 w-5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
+              className="h-5 w-5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
               checked={isAllSelected}
               onChange={(e) => onSelectAll(e.target.checked)}
               aria-label="Select all warranties"
             />
-            <label htmlFor="select-all" className="ml-2 text-sm font-medium text-gray-700">Select All</label>
+            <label htmlFor="select-all" className="ml-2 text-sm font-medium text-gray-700 cursor-pointer">Select All</label>
         </div>
-        <div className="flex items-center">
-          <label htmlFor="status-filter" className="text-sm font-medium text-gray-700 mr-2">Filter by status:</label>
-          <div className="relative">
+        <div className="flex items-center w-full sm:w-auto">
+          <label htmlFor="status-filter" className="text-sm font-medium text-gray-700 mr-2 whitespace-nowrap">Status:</label>
+          <div className="relative w-full sm:w-48">
             <select
               id="status-filter"
               value={statusFilter}
               onChange={(e) => onStatusFilterChange(e.target.value as WarrantyStatus | 'all')}
-              className="appearance-none block w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-brand-primary"
+              className="appearance-none block w-full bg-white border border-gray-300 text-gray-700 py-1.5 px-3 pr-8 rounded-md leading-tight focus:outline-none focus:ring-1 focus:ring-brand-primary focus:border-brand-primary text-sm"
               aria-label="Filter warranties by status"
             >
               <option value="all">All Statuses</option>
@@ -63,7 +64,7 @@ const WarrantyList: React.FC<WarrantyListProps> = ({
       </div>
 
       {warranties.length === 0 ? (
-        <div className="text-center py-16 px-4 bg-white rounded-lg shadow-md">
+        <div className="text-center py-12 px-4 bg-white rounded-lg shadow-md">
           <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
@@ -73,7 +74,7 @@ const WarrantyList: React.FC<WarrantyListProps> = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-24">
           {warranties.sort((a,b) => b.id.localeCompare(a.id)).map(warranty => (
             <WarrantyCard 
               key={warranty.id} 
@@ -89,21 +90,21 @@ const WarrantyList: React.FC<WarrantyListProps> = ({
       )}
 
       {numSelected > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] z-20">
-          <div className="container mx-auto p-4 flex flex-wrap justify-between items-center gap-4">
-            <p className="font-semibold text-brand-primary">{numSelected} record{numSelected > 1 ? 's' : ''} selected</p>
-            <div className="flex items-center gap-2 flex-wrap">
+        <div className="fixed bottom-0 left-0 right-0 bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] z-20 safe-area-pb">
+          <div className="container mx-auto p-3 md:p-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <p className="font-semibold text-brand-primary text-sm sm:text-base">{numSelected} record{numSelected > 1 ? 's' : ''} selected</p>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={onBulkExportCSV}
-                className="px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                className="flex-1 sm:flex-none justify-center px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
               >
-                Export to CSV
+                Export CSV
               </button>
               <button
                 onClick={onBulkDelete}
-                className="flex items-center gap-2 px-4 py-2 text-sm bg-brand-danger text-white rounded-lg hover:bg-red-700 transition"
+                className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2 text-sm bg-brand-danger text-white rounded-lg hover:bg-red-700 transition"
               >
-                <TrashIcon /> Delete Selected
+                <TrashIcon /> Delete
               </button>
             </div>
           </div>

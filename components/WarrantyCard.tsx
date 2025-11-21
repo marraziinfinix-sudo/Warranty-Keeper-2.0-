@@ -84,33 +84,34 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete,
   return (
     <>
       <div 
-        className={`bg-white rounded-xl shadow-lg overflow-hidden transition-all transform hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between relative ring-2 ${isSelected ? 'ring-brand-primary' : 'ring-transparent'}`}
+        className={`bg-white rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 flex flex-col justify-between relative ring-2 ${isSelected ? 'ring-brand-primary' : 'ring-transparent'}`}
+        onClick={() => setIsDetailModalOpen(true)} // Make whole card clickable for details
       >
-        <div className="absolute top-3 left-3 z-10">
+        {/* Selection Checkbox - positioned absolutely */}
+        <div className="absolute top-3 left-3 z-10" onClick={(e) => e.stopPropagation()}>
             <input
                 type="checkbox"
-                className="h-5 w-5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary"
+                className="h-5 w-5 rounded border-gray-300 text-brand-primary focus:ring-brand-primary cursor-pointer shadow-sm"
                 checked={isSelected}
                 onChange={() => onSelectionChange(warranty.id)}
                 aria-label={`Select warranty for ${warranty.customerName}`}
-                onClick={(e) => e.stopPropagation()} // Stop propagation to not trigger other card clicks
             />
         </div>
 
-        <div className="p-5 pl-10">
-            <div className="flex justify-between items-start mb-3">
-                <h3 className="text-xl font-bold text-brand-dark tracking-tight">
+        <div className="p-4 md:p-5 pl-10 md:pl-12">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-3">
+                <h3 className="text-lg md:text-xl font-bold text-brand-dark tracking-tight leading-snug pr-8 sm:pr-0">
                     {cardTitle}
                     {additionalProductsCount > 0 && (
-                        <span className="text-sm font-normal text-gray-500 ml-2">(+{additionalProductsCount} more)</span>
+                        <span className="text-xs md:text-sm font-normal text-gray-500 ml-2 block sm:inline">(+{additionalProductsCount} more)</span>
                     )}
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-start sm:self-auto absolute top-4 right-4 sm:static">
                     {isExpiringSoon && !isExpired && (
                         <div className="relative">
                             <button 
                                 onClick={(e) => { e.stopPropagation(); setShowNotifyOptions(!showNotifyOptions); }} 
-                                className="text-yellow-500 hover:text-yellow-600 p-1 rounded-full relative"
+                                className="text-yellow-500 hover:text-yellow-600 p-1 rounded-full relative focus:outline-none"
                                 aria-label="Notify Customer"
                             >
                                 <NotificationBellIcon />
@@ -137,30 +138,34 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete,
                 </div>
             </div>
             
-            <p className="text-brand-secondary font-medium flex items-center gap-2 mb-2"><UserIcon /> {warranty.customerName}</p>
-            <div className="text-gray-500 text-sm flex items-start gap-2 mb-4">
-                <div className="mt-0.5"><LocationPinIcon /></div>
+            <p className="text-brand-secondary font-medium flex items-center gap-2 mb-1.5 text-sm md:text-base">
+                <UserIcon /> {warranty.customerName}
+            </p>
+            <div className="text-gray-500 text-xs md:text-sm flex items-start gap-2 mb-3">
+                <div className="mt-0.5 flex-shrink-0"><LocationPinIcon /></div>
                 <div className="flex flex-col">
-                    <span>{locationText || 'No location set'}</span>
-                    <span className="text-xs text-gray-400 capitalize flex items-center gap-1"><BuildingIcon />{getBuildingTypeText(warranty)}</span>
+                    <span className="line-clamp-1">{locationText || 'No location set'}</span>
+                    <span className="text-xs text-gray-400 capitalize flex items-center gap-1 mt-0.5">
+                        <BuildingIcon />{getBuildingTypeText(warranty)}
+                    </span>
                 </div>
             </div>
 
-            <div className="border-t border-gray-200 pt-4 space-y-2">
+            <div className="border-t border-gray-100 pt-3 space-y-1.5">
               {productExpiryDate && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
                       <CalendarIcon />
-                      <span>Product warranty expires: {formatDate(productExpiryDate)}</span>
+                      <span>Product warranty expires: <span className="font-medium">{formatDate(productExpiryDate)}</span></span>
                   </div>
               )}
               {warranty.servicesProvided?.install && installationExpiryDate && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
                     <WrenchIcon />
-                    <span>{warranty.serviceName || 'Installation'} expires: {formatDate(installationExpiryDate)}</span>
+                    <span>{warranty.serviceName || 'Installation'} expires: <span className="font-medium">{formatDate(installationExpiryDate)}</span></span>
                 </div>
               )}
               {warranty.servicesProvided?.supply && !warranty.servicesProvided?.install && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
                     <ToolboxIcon />
                     <span>Service: Supply Only</span>
                 </div>
@@ -168,15 +173,23 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete,
             </div>
         </div>
         
-        <div className="bg-gray-50 px-5 py-3 flex justify-between items-center">
-            <button onClick={() => setIsDetailModalOpen(true)} className="text-brand-primary font-semibold hover:underline">
+        <div className="bg-gray-50 px-4 md:px-5 py-2 md:py-3 flex justify-between items-center border-t border-gray-100">
+            <span className="text-brand-primary text-xs md:text-sm font-semibold group-hover:underline">
                 View Details
-            </button>
-            <div className="flex items-center gap-2">
-                <button onClick={() => onEdit(warranty)} className="text-gray-500 hover:text-brand-primary p-2 rounded-full transition-colors">
+            </span>
+            <div className="flex items-center gap-1 md:gap-2">
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(warranty); }} 
+                    className="text-gray-500 hover:text-brand-primary p-1.5 md:p-2 rounded-full transition-colors focus:outline-none hover:bg-blue-50"
+                    title="Edit Warranty"
+                >
                     <EditIcon />
                 </button>
-                <button onClick={() => onDelete(warranty.id)} className="text-gray-500 hover:text-brand-danger p-2 rounded-full transition-colors">
+                <button 
+                    onClick={(e) => { e.stopPropagation(); onDelete(warranty.id); }} 
+                    className="text-gray-500 hover:text-brand-danger p-1.5 md:p-2 rounded-full transition-colors focus:outline-none hover:bg-red-50"
+                    title="Delete Warranty"
+                >
                     <TrashIcon />
                 </button>
             </div>

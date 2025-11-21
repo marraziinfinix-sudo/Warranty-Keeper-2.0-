@@ -330,7 +330,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         onViewChange={setCurrentView}
       />
 
-      <main className="container mx-auto p-4 md:p-6 lg:p-8 flex-grow">
+      <main className="container mx-auto p-3 md:p-6 lg:p-8 flex-grow">
         {currentView === 'warranties' && (
             <WarrantyList
             warranties={filteredWarranties}
@@ -419,7 +419,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         />
       )}
 
-      <footer className="text-center text-sm text-gray-500 py-4">
+      <footer className="text-center text-xs md:text-sm text-gray-500 py-4 px-2">
         Data is securely synced with the cloud in real-time.
       </footer>
     </div>
