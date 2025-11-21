@@ -8,6 +8,7 @@ import CustomersView from './components/CustomersView';
 import ProductsView from './components/ProductsView';
 import Header from './components/Header';
 import WarrantyPreviewModal from './components/WarrantyPreviewModal';
+import SaveEntitiesModal from './components/SaveEntitiesModal';
 import { triggerShare, getWarrantyStatusInfo, exportWarrantiesToCSV } from './utils/warrantyUtils';
 import SettingsModal from './components/SettingsModal';
 import LoginPage from './components/LoginPage';
@@ -33,6 +34,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [previewData, setPreviewData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
   
+  // States for "Save New Entities" flow
+  const [isSaveEntitiesModalOpen, setIsSaveEntitiesModalOpen] = useState(false);
+  const [potentialNewEntities, setPotentialNewEntities] = useState<{
+      customer: Customer | null,
+      products: SavedProduct[]
+  }>({ customer: null, products: [] });
+  const [pendingSaveData, setPendingSaveData] = useState<{
+      warranty: Warranty | Omit<Warranty, 'id'>,
+      shareOptions: { email: boolean, whatsapp: boolean }
+  } | null>(null);
+
   // Navigation & Search State
   const [currentView, setCurrentView] = useState<'warranties' | 'customers' | 'products'>('warranties');
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,9 +99,61 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
     if (!previewData) return;
     const data = previewData;
 
-    setPreviewData(null);
+    setPreviewData(null); // Close preview modal immediately
 
-    try {
+    // Check for new entities to save
+    const normalize = (s: string) => s.trim().toLowerCase();
+    
+    // 1. Check Customer
+    let newCustomerData: Customer | null = null;
+    const customerExists = customers.some(c => normalize(c.name) === normalize(data.customerName));
+    if (!customerExists) {
+        newCustomerData = {
+            id: new Date().toISOString(),
+            name: data.customerName,
+            phone: data.phoneNumber,
+            email: data.email,
+            state: data.state,
+            district: data.district,
+            postcode: data.postcode,
+            buildingType: (data as any).buildingType || 'home',
+            otherBuildingType: data.otherBuildingType
+        };
+    }
+
+    // 2. Check Products
+    const newProductsData: SavedProduct[] = [];
+    data.products.forEach(p => {
+        const productExists = savedProducts.some(sp => normalize(sp.name) === normalize(p.productName));
+        // Ensure we don't add duplicates within the new list itself
+        const alreadyInNewList = newProductsData.some(np => normalize(np.name) === normalize(p.productName));
+        
+        if (!productExists && !alreadyInNewList && p.productName.trim() !== '') {
+            newProductsData.push({
+                id: new Date().toISOString() + Math.random(), // temp id
+                name: p.productName,
+                defaultWarrantyPeriod: p.productWarrantyPeriod,
+                defaultWarrantyUnit: p.productWarrantyUnit
+            });
+        }
+    });
+
+    if (newCustomerData || newProductsData.length > 0) {
+        // Found new entities, trigger modal flow
+        setPotentialNewEntities({ customer: newCustomerData, products: newProductsData });
+        setPendingSaveData({ warranty: data, shareOptions });
+        setIsSaveEntitiesModalOpen(true);
+    } else {
+        // Nothing new, proceed to save directly
+        await performFinalSave(data, shareOptions);
+    }
+  };
+
+  const performFinalSave = async (
+      data: Warranty | Omit<Warranty, 'id'>, 
+      shareOptions: { email: boolean, whatsapp: boolean }
+  ) => {
+      try {
         if ('id' in data && data.id) {
             await updateWarranty(data as Warranty);
         } else {
@@ -97,9 +161,39 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         }
         triggerShare(data, shareOptions);
     } catch (error) {
-        console.error("Error saving warranty in background:", error);
+        console.error("Error saving warranty:", error);
         alert("There was an issue saving your data to the cloud. It will retry automatically when connection is available.");
     }
+  };
+
+  const handleEntitiesSaveConfirm = async (saveCustomer: boolean, productsToSaveNames: string[]) => {
+      if (!pendingSaveData) return;
+
+      // Save Customer if selected
+      if (saveCustomer && potentialNewEntities.customer) {
+          await addCustomer(potentialNewEntities.customer);
+      }
+
+      // Save Selected Products
+      const productsToSave = potentialNewEntities.products.filter(p => productsToSaveNames.includes(p.name));
+      for (const prod of productsToSave) {
+          // Regenerate ID to be safe
+          await addSavedProduct({ ...prod, id: new Date().toISOString() + Math.random().toString(36).substr(2, 9) });
+      }
+
+      setIsSaveEntitiesModalOpen(false);
+      await performFinalSave(pendingSaveData.warranty, pendingSaveData.shareOptions);
+      setPendingSaveData(null);
+      setPotentialNewEntities({ customer: null, products: [] });
+  };
+
+  const handleEntitiesSaveCancel = async () => {
+      if (!pendingSaveData) return;
+      // Skip saving entities, just save warranty
+      setIsSaveEntitiesModalOpen(false);
+      await performFinalSave(pendingSaveData.warranty, pendingSaveData.shareOptions);
+      setPendingSaveData(null);
+      setPotentialNewEntities({ customer: null, products: [] });
   };
 
   const handlePreviewEdit = () => {
@@ -276,6 +370,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
             currentSettings={settings}
             onSave={handleSaveSettings}
             onClose={handleCloseSettings}
+        />
+      )}
+      
+      {isSaveEntitiesModalOpen && (
+        <SaveEntitiesModal 
+            newCustomer={potentialNewEntities.customer}
+            newProducts={potentialNewEntities.products}
+            onConfirm={handleEntitiesSaveConfirm}
+            onCancel={handleEntitiesSaveCancel}
         />
       )}
 
