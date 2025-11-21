@@ -18,6 +18,7 @@ export interface Warranty {
     supply: boolean;
     install: boolean;
   };
+  serviceName?: string; // Specific name of the service (e.g., "Standard Installation")
   installDate?: string; // YYYY-MM-DD, optional
   installationWarrantyPeriod: number; // The number for the warranty period
   installationWarrantyUnit: 'days' | 'weeks' | 'months' | 'years'; // The unit for the period
@@ -51,6 +52,13 @@ export interface Customer {
 }
 
 export interface SavedProduct {
+  id: string;
+  name: string;
+  defaultWarrantyPeriod: number;
+  defaultWarrantyUnit: 'days' | 'weeks' | 'months' | 'years';
+}
+
+export interface SavedService {
   id: string;
   name: string;
   defaultWarrantyPeriod: number;

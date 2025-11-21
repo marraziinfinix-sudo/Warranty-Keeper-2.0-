@@ -6,7 +6,7 @@ interface SettingsModalProps {
   currentSettings: AppSettings;
   onSave: (newSettings: AppSettings) => void;
   onClose: () => void;
-  onClearData: (type: 'warranties' | 'customers' | 'products' | 'all') => Promise<void>;
+  onClearData: (type: 'warranties' | 'customers' | 'products' | 'services' | 'all') => Promise<void>;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, onClose, onClearData }) => {
@@ -26,12 +26,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
     onClose();
   };
 
-  const handleClear = (type: 'warranties' | 'customers' | 'products' | 'all') => {
+  const handleClear = (type: 'warranties' | 'customers' | 'products' | 'services' | 'all') => {
       const messages = {
           warranties: "Are you sure you want to delete ALL warranty records? This cannot be undone.",
           customers: "Are you sure you want to delete ALL saved customers? This cannot be undone.",
           products: "Are you sure you want to delete ALL saved products? This cannot be undone.",
-          all: "WARNING: This will perform a FACTORY RESET and delete ALL data (warranties, customers, products). This cannot be undone. Are you sure?"
+          services: "Are you sure you want to delete ALL saved services? This cannot be undone.",
+          all: "WARNING: This will perform a FACTORY RESET and delete ALL data (warranties, customers, products, services). This cannot be undone. Are you sure?"
       };
       
       if (window.confirm(messages[type])) {
@@ -85,6 +86,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                         </button>
                         <button type="button" onClick={() => handleClear('products')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
                             Clear Product Catalog
+                        </button>
+                        <button type="button" onClick={() => handleClear('services')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                            Clear Service Catalog
                         </button>
                         <button type="button" onClick={() => handleClear('all')} className="w-full text-left px-4 py-3 border border-red-300 bg-red-50 rounded-md text-sm font-bold text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
                             Factory Reset (Clear All Data)
