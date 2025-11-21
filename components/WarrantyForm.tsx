@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Warranty, Product } from '../types';
-import { formatDate } from '../utils/warrantyUtils';
+import { formatDate, calculateExpiryDate } from '../utils/warrantyUtils';
 import { PlusIcon, TrashIcon } from './icons/Icons';
 
 interface WarrantyFormProps {
@@ -224,6 +224,11 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                             <option value="years">Years</option>
                                         </select>
                                     </div>
+                                    {product.purchaseDate && (
+                                        <p className="text-xs text-gray-500 mt-1 text-right">
+                                            Expires on: {formatDate(calculateExpiryDate(product.purchaseDate, product.productWarrantyPeriod, product.productWarrantyUnit))}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="md:col-span-2 border-t border-dashed pt-3 mt-1">
                                     <label className="block text-sm font-medium text-gray-700">Alert Threshold (Optional)</label>
@@ -293,6 +298,11 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                         <option value="years">Years</option>
                                     </select>
                                 </div>
+                                {formData.installDate && (
+                                    <p className="text-xs text-gray-500 mt-1 text-right">
+                                        Expires on: {formatDate(calculateExpiryDate(formData.installDate, formData.installationWarrantyPeriod, formData.installationWarrantyUnit))}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     )}

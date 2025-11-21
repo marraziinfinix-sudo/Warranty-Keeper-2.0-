@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Warranty, Product, AppSettings, WarrantyStatus } from './types';
 import { useWarranties, useSettings } from './hooks/useFirestore';
@@ -164,7 +163,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
 
   const handleBulkDelete = async () => {
     if (window.confirm(`Are you sure you want to delete ${selectedWarranties.size} selected records? This action cannot be undone.`)) {
-        const idsToDelete = Array.from(selectedWarranties);
+        const idsToDelete = Array.from(selectedWarranties) as string[];
         await bulkDeleteWarranties(idsToDelete);
         setSelectedWarranties(new Set());
     }
