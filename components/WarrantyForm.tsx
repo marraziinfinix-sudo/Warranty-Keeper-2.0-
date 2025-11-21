@@ -67,11 +67,11 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
     
     if (name === 'customerName') {
         // Check for auto-fill
-        const matchedCustomer = customers.find(c => c.name === value);
+        const matchedCustomer = customers.find(c => c.name.toLowerCase() === value.toLowerCase());
         if (matchedCustomer) {
             setFormData(prev => ({
                 ...prev,
-                customerName: value,
+                customerName: matchedCustomer.name, // Use the exact name from record
                 phoneNumber: matchedCustomer.phone,
                 email: matchedCustomer.email,
                 state: matchedCustomer.state,
@@ -120,12 +120,14 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
 
     if (name === 'productName') {
         // Auto-fill warranty defaults if matches saved product
-        const matchedProduct = savedProducts.find(p => p.name === value);
+        const matchedProduct = savedProducts.find(p => p.name.toLowerCase() === value.toLowerCase());
         if (matchedProduct) {
+            productToUpdate.productName = matchedProduct.name; // Use exact name
             productToUpdate.productWarrantyPeriod = matchedProduct.defaultWarrantyPeriod;
             productToUpdate.productWarrantyUnit = matchedProduct.defaultWarrantyUnit;
+        } else {
+            (productToUpdate as any)[name] = value;
         }
-        (productToUpdate as any)[name] = value;
     } else if (name === 'productWarrantyPeriod') {
       (productToUpdate as any)[name] = parseInt(value, 10) || 0;
     } else if (name === 'expiryReminderDays') {
@@ -176,6 +178,11 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
   };
   
   const formInputStyles = "mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm";
+
+  // Filter out saved products from the historical product list to avoid duplicates in the datalist
+  const historicalProducts = productList.filter(name => 
+    !savedProducts.some(sp => sp.name.toLowerCase() === name.toLowerCase())
+  );
   
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center p-4" onClick={onClose}>
@@ -194,10 +201,12 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                             onChange={handleChange} 
                             required 
                             list="customer-list" 
-                            placeholder="Select or type name"
+                            placeholder="Select from list or type new..."
                         />
                         <datalist id="customer-list">
-                            {customers.map(c => <option key={c.id} value={c.name} />)}
+                            {customers.map(c => (
+                                <option key={c.id} value={c.name}>{`Phone: ${c.phone}`}</option>
+                            ))}
                         </datalist>
 
                         <InputField label="Phone Number" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} required />
@@ -248,7 +257,15 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                                 <button type="button" onClick={() => removeProduct(index)} className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-full transition">
                                     <TrashIcon />
                                 </button>
-                                <InputField label="Product Name" name="productName" value={product.productName} onChange={e => handleProductChange(index, e)} required list="product-list" placeholder="Select or type product"/>
+                                <InputField 
+                                    label="Product Name" 
+                                    name="productName" 
+                                    value={product.productName} 
+                                    onChange={e => handleProductChange(index, e)} 
+                                    required 
+                                    list="product-list" 
+                                    placeholder="Select from catalog or type new..."
+                                />
                                 <InputField label="Serial Number" name="serialNumber" value={product.serialNumber} onChange={e => handleProductChange(index, e)} required />
                                 <div>
                                     <InputField label="Purchase Date" name="purchaseDate" type="date" value={product.purchaseDate} onChange={e => handleProductChange(index, e)} required />
@@ -290,8 +307,15 @@ const WarrantyForm: React.FC<WarrantyFormProps> = ({ onClose, onPreview, initial
                             </div>
                         ))}
                     </div>
+                    
+                    {/* Product Data List source */}
                      <datalist id="product-list">
-                        {productList.map(productName => <option key={productName} value={productName} />)}
+                        {savedProducts.map(p => (
+                            <option key={p.id} value={p.name}>{`Default: ${p.defaultWarrantyPeriod} ${p.defaultWarrantyUnit}`}</option>
+                        ))}
+                        {historicalProducts.map(productName => (
+                            <option key={productName} value={productName} />
+                        ))}
                     </datalist>
                     
                     <hr className="my-6"/>
