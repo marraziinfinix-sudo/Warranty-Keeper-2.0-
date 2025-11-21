@@ -1,29 +1,24 @@
 
 import React, { useState } from 'react';
-import { Customer, SavedProduct, SavedService } from '../types';
-import { UsersIcon, CubeIcon, WrenchIcon } from './icons/Icons';
+import { Customer, SavedProduct } from '../types';
+import { UsersIcon, CubeIcon } from './icons/Icons';
 
 interface SaveEntitiesModalProps {
   newCustomer: Customer | null;
   newProducts: SavedProduct[];
-  newServices: SavedService[];
-  onConfirm: (saveCustomer: boolean, productsToSave: string[], servicesToSave: string[]) => void;
+  onConfirm: (saveCustomer: boolean, productsToSave: string[]) => void;
   onCancel: () => void; // Acts as "Skip"
 }
 
 const SaveEntitiesModal: React.FC<SaveEntitiesModalProps> = ({ 
   newCustomer, 
-  newProducts,
-  newServices, 
+  newProducts, 
   onConfirm, 
   onCancel 
 }) => {
   const [saveCustomer, setSaveCustomer] = useState(!!newCustomer);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
-    new Set(newProducts.map(p => p.name))
-  );
-  const [selectedServices, setSelectedServices] = useState<Set<string>>(
-    new Set(newServices.map(s => s.name))
+    new Set(newProducts.map(p => p.name)) // Default select all new products
   );
 
   const handleProductToggle = (productName: string) => {
@@ -36,23 +31,13 @@ const SaveEntitiesModal: React.FC<SaveEntitiesModalProps> = ({
     setSelectedProducts(newSet);
   };
 
-  const handleServiceToggle = (serviceName: string) => {
-    const newSet = new Set(selectedServices);
-    if (newSet.has(serviceName)) {
-        newSet.delete(serviceName);
-    } else {
-        newSet.add(serviceName);
-    }
-    setSelectedServices(newSet);
-  };
-
   const handleConfirm = () => {
-    onConfirm(saveCustomer, Array.from(selectedProducts), Array.from(selectedServices));
+    onConfirm(saveCustomer, Array.from(selectedProducts));
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-[60] flex justify-center items-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md transform transition-all scale-100 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-md transform transition-all scale-100">
         <div className="p-6">
             <div className="flex items-center justify-center mb-4 text-brand-primary">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -91,7 +76,7 @@ const SaveEntitiesModal: React.FC<SaveEntitiesModalProps> = ({
                         <p className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
                             <CubeIcon /> Save New Products
                         </p>
-                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
                             {newProducts.map((product) => (
                                 <label key={product.name} className="flex items-center cursor-pointer">
                                     <input 
@@ -101,27 +86,6 @@ const SaveEntitiesModal: React.FC<SaveEntitiesModalProps> = ({
                                         className="focus:ring-brand-primary h-4 w-4 text-brand-primary border-gray-300 rounded"
                                     />
                                     <span className="ml-2 text-sm text-gray-600">{product.name}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {newServices.length > 0 && (
-                    <div className="bg-purple-50 border border-purple-100 rounded-lg p-3">
-                        <p className="text-sm font-medium text-gray-900 mb-2 flex items-center gap-2">
-                            <WrenchIcon /> Save New Services
-                        </p>
-                        <div className="space-y-2 max-h-32 overflow-y-auto">
-                            {newServices.map((service) => (
-                                <label key={service.name} className="flex items-center cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={selectedServices.has(service.name)}
-                                        onChange={() => handleServiceToggle(service.name)}
-                                        className="focus:ring-brand-primary h-4 w-4 text-brand-primary border-gray-300 rounded"
-                                    />
-                                    <span className="ml-2 text-sm text-gray-600">{service.name}</span>
                                 </label>
                             ))}
                         </div>

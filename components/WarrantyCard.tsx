@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Warranty, WarrantyStatus, AppSettings } from '../types';
 import WarrantyStatusBadge from './WarrantyStatusBadge';
@@ -79,12 +78,7 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete,
   
   const primaryProduct = warranty.products?.[0];
   const additionalProductsCount = warranty.products?.length > 1 ? warranty.products.length - 1 : 0;
-  
-  let cardTitle = primaryProduct?.productName;
-  if (!cardTitle) {
-      const serviceText = getServiceText(warranty.servicesProvided);
-      cardTitle = warranty.serviceName ? `${serviceText} (${warranty.serviceName})` : `${serviceText} Warranty`;
-  }
+  const cardTitle = primaryProduct?.productName || `${getServiceText(warranty.servicesProvided)} Warranty`;
 
   return (
     <>
@@ -160,11 +154,8 @@ const WarrantyCard: React.FC<WarrantyCardProps> = ({ warranty, onEdit, onDelete,
               )}
               {warranty.servicesProvided?.install && installationExpiryDate && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <ToolboxIcon />
-                    <span>
-                        {warranty.serviceName ? `${warranty.serviceName}: ` : 'Installation: '} 
-                        {formatDate(installationExpiryDate)}
-                    </span>
+                    <CalendarIcon />
+                    <span>Installation expires: {formatDate(installationExpiryDate)}</span>
                 </div>
               )}
               {warranty.servicesProvided?.supply && !warranty.servicesProvided?.install && (

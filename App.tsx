@@ -1,12 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Warranty, AppSettings, WarrantyStatus, Customer, SavedProduct, SavedService } from './types';
-import { useWarranties, useSettings, useCustomers, useSavedProducts, useSavedServices } from './hooks/useFirestore';
+import { Warranty, AppSettings, WarrantyStatus, Customer, SavedProduct } from './types';
+import { useWarranties, useSettings, useCustomers, useSavedProducts } from './hooks/useFirestore';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyList from './components/WarrantyList';
 import CustomersView from './components/CustomersView';
 import ProductsView from './components/ProductsView';
-import ServicesView from './components/ServicesView';
 import Header from './components/Header';
 import WarrantyPreviewModal from './components/WarrantyPreviewModal';
 import SaveEntitiesModal from './components/SaveEntitiesModal';
@@ -29,7 +28,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   const { settings, updateSettings } = useSettings(user.uid);
   const { customers, addCustomer, updateCustomer, deleteCustomer, clearCustomers } = useCustomers(user.uid);
   const { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct, clearSavedProducts } = useSavedProducts(user.uid);
-  const { savedServices, addSavedService, updateSavedService, deleteSavedService, clearSavedServices } = useSavedServices(user.uid);
   
   const [formSeedData, setFormSeedData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -40,16 +38,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   const [isSaveEntitiesModalOpen, setIsSaveEntitiesModalOpen] = useState(false);
   const [potentialNewEntities, setPotentialNewEntities] = useState<{
       customer: Customer | null,
-      products: SavedProduct[],
-      services: SavedService[]
-  }>({ customer: null, products: [], services: [] });
+      products: SavedProduct[]
+  }>({ customer: null, products: [] });
   const [pendingSaveData, setPendingSaveData] = useState<{
       warranty: Warranty | Omit<Warranty, 'id'>,
       shareOptions: { email: boolean, whatsapp: boolean }
   } | null>(null);
 
   // Navigation & Search State
-  const [currentView, setCurrentView] = useState<'warranties' | 'customers' | 'products' | 'services'>('warranties');
+  const [currentView, setCurrentView] = useState<'warranties' | 'customers' | 'products'>('warranties');
   const [searchTerm, setSearchTerm] = useState('');
   
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
@@ -134,24 +131,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         }
     });
 
-    // 3. Check Services
-    const newServicesData: SavedService[] = [];
-    if (data.servicesProvided?.install && data.serviceName) {
-        const serviceExists = savedServices.some(s => normalize(s.name) === normalize(data.serviceName!));
-        if (!serviceExists) {
-             newServicesData.push({
-                id: new Date().toISOString() + Math.random(), // temp id
-                name: data.serviceName,
-                defaultWarrantyPeriod: data.installationWarrantyPeriod,
-                defaultWarrantyUnit: data.installationWarrantyUnit
-             });
-        }
-    }
-
-
-    if (newCustomerData || newProductsData.length > 0 || newServicesData.length > 0) {
+    if (newCustomerData || newProductsData.length > 0) {
         // Found new entities, trigger modal flow
-        setPotentialNewEntities({ customer: newCustomerData, products: newProductsData, services: newServicesData });
+        setPotentialNewEntities({ customer: newCustomerData, products: newProductsData });
         setPendingSaveData({ warranty: data, shareOptions });
         setIsSaveEntitiesModalOpen(true);
     } else {
@@ -177,7 +159,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
     }
   };
 
-  const handleEntitiesSaveConfirm = async (saveCustomer: boolean, productsToSaveNames: string[], servicesToSaveNames: string[]) => {
+  const handleEntitiesSaveConfirm = async (saveCustomer: boolean, productsToSaveNames: string[]) => {
       if (!pendingSaveData) return;
 
       // Save Customer if selected
@@ -192,16 +174,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
           await addSavedProduct({ ...prod, id: new Date().toISOString() + Math.random().toString(36).substr(2, 9) });
       }
 
-      // Save Selected Services
-      const servicesToSave = potentialNewEntities.services.filter(s => servicesToSaveNames.includes(s.name));
-      for (const serv of servicesToSave) {
-          await addSavedService({ ...serv, id: new Date().toISOString() + Math.random().toString(36).substr(2, 9) });
-      }
-
       setIsSaveEntitiesModalOpen(false);
       await performFinalSave(pendingSaveData.warranty, pendingSaveData.shareOptions);
       setPendingSaveData(null);
-      setPotentialNewEntities({ customer: null, products: [], services: [] });
+      setPotentialNewEntities({ customer: null, products: [] });
   };
 
   const handleEntitiesSaveCancel = async () => {
@@ -210,7 +186,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
       setIsSaveEntitiesModalOpen(false);
       await performFinalSave(pendingSaveData.warranty, pendingSaveData.shareOptions);
       setPendingSaveData(null);
-      setPotentialNewEntities({ customer: null, products: [], services: [] });
+      setPotentialNewEntities({ customer: null, products: [] });
   };
 
   const handlePreviewEdit = () => {
@@ -230,7 +206,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
       updateSettings(newSettings);
   };
 
-  const handleClearData = async (type: 'warranties' | 'customers' | 'products' | 'services' | 'all') => {
+  const handleClearData = async (type: 'warranties' | 'customers' | 'products' | 'all') => {
       try {
           if (type === 'warranties' || type === 'all') {
               await clearWarranties();
@@ -240,9 +216,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
           }
           if (type === 'products' || type === 'all') {
               await clearSavedProducts();
-          }
-          if (type === 'services' || type === 'all') {
-              await clearSavedServices();
           }
           if (type === 'all') {
                alert("Factory reset complete. All data has been cleared.");
@@ -272,7 +245,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
           (p.productName || '').toLowerCase().includes(lowercasedTerm) ||
           (p.serialNumber || '').toLowerCase().includes(lowercasedTerm)
         ) ||
-        (w.serviceName || '').toLowerCase().includes(lowercasedTerm) ||
         (w.postcode || '').toLowerCase().includes(lowercasedTerm) ||
         (w.district || '').toLowerCase().includes(lowercasedTerm) ||
         (w.state || '').toLowerCase().includes(lowercasedTerm)
@@ -387,16 +359,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
                 onDeleteProduct={deleteSavedProduct}
             />
         )}
-
-        {currentView === 'services' && (
-            <ServicesView
-                savedServices={savedServices}
-                searchTerm={searchTerm}
-                onAddService={addSavedService}
-                onUpdateService={updateSavedService}
-                onDeleteService={deleteSavedService}
-            />
-        )}
       </main>
 
       {isFormOpen && (
@@ -406,7 +368,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
           initialData={formSeedData}
           customers={customers}
           savedProducts={savedProducts}
-          savedServices={savedServices}
         />
       )}
 
@@ -432,7 +393,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         <SaveEntitiesModal 
             newCustomer={potentialNewEntities.customer}
             newProducts={potentialNewEntities.products}
-            newServices={potentialNewEntities.services}
             onConfirm={handleEntitiesSaveConfirm}
             onCancel={handleEntitiesSaveCancel}
         />

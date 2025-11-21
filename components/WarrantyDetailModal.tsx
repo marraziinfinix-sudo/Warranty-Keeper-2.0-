@@ -113,7 +113,6 @@ const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({ warranty, onC
             <DetailRow label="Services Provided" value={getServiceText(warranty.servicesProvided)} />
             {warranty.servicesProvided?.install && (
                 <>
-                    {warranty.serviceName && <DetailRow label="Service Type" value={warranty.serviceName} />}
                     {warranty.installDate ? <DetailRow label="Installation Date" value={formatDate(warranty.installDate)} /> : null}
                     <DetailRow label="Installation Warranty" value={installationWarrantyText} />
                     {installationExpiryDate && (

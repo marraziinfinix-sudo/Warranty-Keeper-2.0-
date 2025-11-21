@@ -217,9 +217,6 @@ export const generateShareMessage = (warranty: Omit<Warranty, 'id'> | Warranty, 
         if (warranty.servicesProvided?.install && isInstallationUnexpired) {
             message += `--- Service Information ---\n`;
             message += `Service Type: Installation\n`;
-            if (warranty.serviceName) {
-                message += `Service Name: ${warranty.serviceName}\n`;
-            }
             message += `Installation Date: ${formatDate(warranty.installDate)}\n`;
             message += `Installation Warranty: ${formatWarrantyText(warranty.installationWarrantyPeriod, warranty.installationWarrantyUnit)}\n`;
             message += `Installation Warranty Expires: ${installationExpiry ? formatDate(installationExpiry) : 'N/A'}\n\n`;
@@ -251,9 +248,6 @@ export const generateShareMessage = (warranty: Omit<Warranty, 'id'> | Warranty, 
         message += `Services Provided: ${getServiceText(warranty.servicesProvided)}\n`;
         
         if (warranty.servicesProvided?.install) {
-            if (warranty.serviceName) {
-                message += `Service Name: ${warranty.serviceName}\n`;
-            }
             const installationExpiry = warranty.installDate ? calculateExpiryDate(warranty.installDate, warranty.installationWarrantyPeriod, warranty.installationWarrantyUnit) : null;
             message += `Installation Date: ${formatDate(warranty.installDate)}\n`;
             if (warranty.installationWarrantyPeriod > 0) {
@@ -307,7 +301,7 @@ const escapeCSV = (value: any): string => {
 
 export const exportWarrantiesToCSV = (warranties: Warranty[]) => {
   const headers = [
-    'id', 'customerName', 'phoneNumber', 'email', 'servicesProvided', 'serviceName',
+    'id', 'customerName', 'phoneNumber', 'email', 'servicesProvided',
     'installDate', 'installationWarrantyPeriod', 'installationWarrantyUnit',
     'postcode', 'district', 'state', 'buildingType', 'otherBuildingType',
     'productName', 'serialNumber', 'purchaseDate', 'productWarrantyPeriod', 'productWarrantyUnit',
@@ -316,7 +310,7 @@ export const exportWarrantiesToCSV = (warranties: Warranty[]) => {
 
   const rows = warranties.flatMap(w => {
     const commonData = [
-      w.id, w.customerName, w.phoneNumber, w.email, getServiceText(w.servicesProvided), w.serviceName || '',
+      w.id, w.customerName, w.phoneNumber, w.email, getServiceText(w.servicesProvided),
       w.installDate ? formatDate(w.installDate) : '', w.installationWarrantyPeriod, w.installationWarrantyUnit,
       w.postcode, w.district, w.state, w.buildingType, w.otherBuildingType || ''
     ];

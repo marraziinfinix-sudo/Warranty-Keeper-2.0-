@@ -11,7 +11,7 @@ import {
   writeBatch,
   getDocs
 } from 'firebase/firestore';
-import { Warranty, AppSettings, Customer, SavedProduct, SavedService } from '../types';
+import { Warranty, AppSettings, Customer, SavedProduct } from '../types';
 
 // Helper to remove undefined values which Firestore dislikes
 const sanitize = <T>(obj: T): T => {
@@ -179,45 +179,4 @@ export const useSavedProducts = (userId: string) => {
   };
 
   return { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct, clearSavedProducts };
-};
-
-export const useSavedServices = (userId: string) => {
-  const [savedServices, setSavedServices] = useState<SavedService[]>([]);
-
-  useEffect(() => {
-    if (!userId) {
-        setSavedServices([]);
-        return;
-    }
-    const q = query(collection(db, 'users', userId, 'saved_services'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as SavedService);
-      setSavedServices(data.sort((a, b) => a.name.localeCompare(b.name)));
-    });
-    return () => unsubscribe();
-  }, [userId]);
-
-  const addSavedService = async (service: SavedService) => {
-    await setDoc(doc(db, 'users', userId, 'saved_services', service.id), sanitize(service));
-  };
-
-  const updateSavedService = async (service: SavedService) => {
-    await setDoc(doc(db, 'users', userId, 'saved_services', service.id), sanitize(service), { merge: true });
-  };
-
-  const deleteSavedService = async (id: string) => {
-    await deleteDoc(doc(db, 'users', userId, 'saved_services', id));
-  };
-
-  const clearSavedServices = async () => {
-      const q = query(collection(db, 'users', userId, 'saved_services'));
-      const snapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      snapshot.docs.forEach((doc) => {
-          batch.delete(doc.ref);
-      });
-      await batch.commit();
-  };
-
-  return { savedServices, addSavedService, updateSavedService, deleteSavedService, clearSavedServices };
 };
