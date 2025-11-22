@@ -1,12 +1,12 @@
 
 import React, { useState, useRef } from 'react';
 import { AppSettings, UserProfile, SubUser } from '../types';
-import { DownloadIcon, UploadIcon, UsersIcon, PlusIcon, TrashIcon } from './icons/Icons';
+import { DownloadIcon, UploadIcon, UsersIcon, PlusIcon, TrashIcon, LockIcon, KeyIcon, EyeIcon, EyeOffIcon } from './icons/Icons';
 import { useSubUsers } from '../hooks/useFirestore';
 import { initializeApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signOut, sendEmailVerification } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signOut, sendEmailVerification, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { setDoc, doc, getDoc } from 'firebase/firestore';
-import { firebaseConfig, db } from '../firebase'; // Re-import config for secondary app
+import { firebaseConfig, db, auth } from '../firebase'; // Re-import config for secondary app
 
 interface SettingsModalProps {
   currentSettings: AppSettings;
@@ -30,7 +30,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onRestore
 }) => {
   const [settings, setSettings] = useState<AppSettings>(currentSettings);
-  const [activeTab, setActiveTab] = useState<'general' | 'users' | 'data'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'users' | 'data'>('general');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = userProfile.role === 'admin';
@@ -85,30 +85,40 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
         </div>
 
-        {isAdmin && (
-            <div className="px-6 mb-4 border-b border-gray-200 overflow-x-auto">
-                <div className="flex gap-4 min-w-max">
-                    <button 
-                        className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'general' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setActiveTab('general')}
-                    >
-                        General
-                    </button>
-                    <button 
-                         className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'data' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setActiveTab('data')}
-                    >
-                        Data Management
-                    </button>
-                    <button 
-                         className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                        onClick={() => setActiveTab('users')}
-                    >
-                        User Management
-                    </button>
-                </div>
+        <div className="px-6 mb-4 border-b border-gray-200 overflow-x-auto">
+            <div className="flex gap-4 min-w-max">
+                <button 
+                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'general' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setActiveTab('general')}
+                >
+                    General
+                </button>
+                
+                <button 
+                        className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'security' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    onClick={() => setActiveTab('security')}
+                >
+                    Security
+                </button>
+                
+                {isAdmin && (
+                    <>
+                        <button 
+                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'data' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('data')}
+                        >
+                            Data Management
+                        </button>
+                        <button 
+                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('users')}
+                        >
+                            User Management
+                        </button>
+                    </>
+                )}
             </div>
-        )}
+        </div>
 
         {activeTab === 'general' && (
             <form onSubmit={handleSave}>
@@ -139,8 +149,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
             </form>
         )}
+        
+        {activeTab === 'security' && (
+            <SecurityTab />
+        )}
 
-        {activeTab === 'data' && (
+        {activeTab === 'data' && isAdmin && (
              <div className="p-6 pt-2">
                 <div className="space-y-6">
                     <div>
@@ -215,12 +229,149 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
         )}
 
-        {activeTab === 'users' && (
+        {activeTab === 'users' && isAdmin && (
             <UserManagementTab adminId={userProfile.uid} companyName={userProfile.companyName} />
         )}
       </div>
     </div>
   );
+};
+
+const SecurityTab: React.FC = () => {
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [message, setMessage] = useState({ text: '', type: '' as 'success' | 'error' });
+    const [loading, setLoading] = useState(false);
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setMessage({ text: '', type: 'error' });
+        setLoading(true);
+
+        if (newPassword.length < 6) {
+            setMessage({ text: 'New password must be at least 6 characters long.', type: 'error' });
+            setLoading(false);
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setMessage({ text: 'New passwords do not match.', type: 'error' });
+            setLoading(false);
+            return;
+        }
+
+        const user = auth.currentUser;
+        if (!user || !user.email) {
+            setMessage({ text: 'User not authenticated.', type: 'error' });
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Re-authenticate user first
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            await reauthenticateWithCredential(user, credential);
+            
+            // Update password
+            await updatePassword(user, newPassword);
+            
+            setMessage({ text: 'Password updated successfully!', type: 'success' });
+            setCurrentPassword('');
+            setNewPassword('');
+            setConfirmPassword('');
+        } catch (error: any) {
+            let errMsg = 'Failed to update password.';
+            if (error.code === 'auth/wrong-password') {
+                errMsg = 'Incorrect current password.';
+            } else if (error.code === 'auth/too-many-requests') {
+                errMsg = 'Too many attempts. Please try again later.';
+            } else if (error.code === 'auth/requires-recent-login') {
+                errMsg = 'Please sign out and sign in again to change your password.';
+            }
+            setMessage({ text: errMsg, type: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="p-6 pt-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Change Password</h3>
+            <p className="text-sm text-gray-500 mb-4">Update the password for your account.</p>
+
+            {message.text && (
+                <div className={`mb-4 p-3 rounded text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                    {message.text}
+                </div>
+            )}
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                    <div className="relative mt-1">
+                        <input 
+                            type={showCurrent ? "text" : "password"} 
+                            required 
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm pr-10"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowCurrent(!showCurrent)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                            {showCurrent ? <EyeOffIcon /> : <EyeIcon />}
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">New Password</label>
+                    <div className="relative mt-1">
+                        <input 
+                            type={showNew ? "text" : "password"} 
+                            required 
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm pr-10"
+                        />
+                         <button
+                            type="button"
+                            onClick={() => setShowNew(!showNew)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                            {showNew ? <EyeOffIcon /> : <EyeIcon />}
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                    <input 
+                        type="password" 
+                        required 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                    />
+                </div>
+
+                <div className="pt-2">
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className={`w-full flex justify-center items-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-primary ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    >
+                        {loading ? 'Updating...' : <><LockIcon /> Update Password</>}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
 };
 
 interface UserManagementTabProps {
@@ -301,6 +452,18 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
             setLoading(false);
         }
     };
+    
+    const handleResetPassword = async (email: string) => {
+        if(window.confirm(`Send a password reset email to ${email}?`)) {
+            try {
+                await sendPasswordResetEmail(auth, email);
+                alert(`Password reset email sent to ${email}.`);
+            } catch (err: any) {
+                console.error("Error sending reset email:", err);
+                alert("Failed to send reset email. " + (err.message || ""));
+            }
+        }
+    };
 
     return (
         <div className="p-6 pt-2">
@@ -367,17 +530,26 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
                                         <UsersIcon /> {user.username}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                                        <button 
-                                            onClick={() => {
-                                                if(window.confirm("Remove this user from list? (Note: Account deletion requires contacting support)")) {
-                                                    deleteSubUser(user.uid);
-                                                }
-                                            }} 
-                                            className="text-gray-400 hover:text-red-600"
-                                            title="Remove User"
-                                        >
-                                            <TrashIcon />
-                                        </button>
+                                        <div className="flex justify-end items-center gap-2">
+                                            <button
+                                                onClick={() => handleResetPassword(user.username)}
+                                                className="text-gray-400 hover:text-brand-primary p-1"
+                                                title="Send Password Reset Email"
+                                            >
+                                                <KeyIcon />
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    if(window.confirm("Remove this user from list? (Note: Account deletion requires contacting support)")) {
+                                                        deleteSubUser(user.uid);
+                                                    }
+                                                }} 
+                                                className="text-gray-400 hover:text-red-600 p-1"
+                                                title="Remove User"
+                                            >
+                                                <TrashIcon />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
