@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Warranty, AppSettings, WarrantyStatus, Customer, SavedProduct, SavedService } from './types';
+import { Warranty, AppSettings, WarrantyStatus, Customer, SavedProduct, SavedService, UserProfile } from './types';
 import { useWarranties, useSettings, useCustomers, useSavedProducts, useSavedServices, restoreFirestoreData } from './hooks/useFirestore';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyList from './components/WarrantyList';
@@ -17,21 +17,22 @@ import LoginPage from './components/LoginPage';
 import VerificationPendingScreen from './components/VerificationPendingScreen';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut, User, deleteUser } from 'firebase/auth';
-import { doc, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { doc, onSnapshot, deleteDoc, getDoc } from 'firebase/firestore';
 
 interface DashboardProps {
   user: User;
+  userProfile: UserProfile;
+  dataOwnerId: string; // The UID of the account that owns the data (Admin)
   onLogout: () => void;
-  companyName: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) => {
-  // Use Firestore hooks
-  const { warranties, loading: warrantiesLoading, addWarranty: addWarrantyToDb, updateWarranty: updateWarrantyInDb, deleteWarranty: deleteWarrantyFromDb, bulkDeleteWarranties, clearWarranties } = useWarranties(user.uid);
-  const { settings, updateSettings, deleteSettings } = useSettings(user.uid);
-  const { customers, addCustomer, updateCustomer, deleteCustomer, clearCustomers } = useCustomers(user.uid);
-  const { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct, clearSavedProducts } = useSavedProducts(user.uid);
-  const { savedServices, addSavedService, updateSavedService, deleteSavedService, clearSavedServices } = useSavedServices(user.uid);
+const Dashboard: React.FC<DashboardProps> = ({ user, userProfile, dataOwnerId, onLogout }) => {
+  // Use Firestore hooks with dataOwnerId
+  const { warranties, loading: warrantiesLoading, addWarranty: addWarrantyToDb, updateWarranty: updateWarrantyInDb, deleteWarranty: deleteWarrantyFromDb, bulkDeleteWarranties, clearWarranties } = useWarranties(dataOwnerId);
+  const { settings, updateSettings, deleteSettings } = useSettings(dataOwnerId);
+  const { customers, addCustomer, updateCustomer, deleteCustomer, clearCustomers } = useCustomers(dataOwnerId);
+  const { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct, clearSavedProducts } = useSavedProducts(dataOwnerId);
+  const { savedServices, addSavedService, updateSavedService, deleteSavedService, clearSavedServices } = useSavedServices(dataOwnerId);
   
   const [formSeedData, setFormSeedData] = useState<Warranty | Omit<Warranty, 'id'> | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -57,6 +58,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   const [statusFilter, setStatusFilter] = useState<WarrantyStatus | 'all'>('all');
   const [selectedWarranties, setSelectedWarranties] = useState<Set<string>>(new Set());
   
+  const isAdmin = userProfile.role === 'admin';
+
   const addWarranty = async (warranty: Omit<Warranty, 'id'>) => {
     const newWarranty: Warranty = { ...warranty, id: new Date().toISOString() };
     await addWarrantyToDb(newWarranty);
@@ -224,6 +227,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   };
 
   const handleClearData = async (type: 'warranties' | 'customers' | 'products' | 'services' | 'all') => {
+      if (!isAdmin) {
+          alert("Only admins can clear data.");
+          return;
+      }
       try {
           if (type === 'warranties' || type === 'all') await clearWarranties();
           if (type === 'customers' || type === 'all') await clearCustomers();
@@ -288,6 +295,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   };
 
   const handleRestore = async (file: File) => {
+      if (!isAdmin) {
+        alert("Only admins can restore data.");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = async (e) => {
           try {
@@ -299,7 +310,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
                       throw new Error("Invalid backup file format.");
                   }
                   
-                  await restoreFirestoreData(user.uid, json);
+                  await restoreFirestoreData(dataOwnerId, json);
                   alert("Data restored successfully!");
                   setIsSettingsOpen(false);
               }
@@ -312,10 +323,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
   };
 
   const handleDeleteAccount = async () => {
+    if (!isAdmin) {
+        alert("Only admins can delete the account and company data.");
+        return;
+    }
     const confirm1 = window.confirm("DANGER: Are you sure you want to delete your account? This action is PERMANENT and cannot be undone.");
     if (!confirm1) return;
 
-    const confirm2 = window.confirm("Please confirm again: All your warranties, customers, products, and account data will be deleted immediately.");
+    const confirm2 = window.confirm("Please confirm again: All your warranties, customers, products, sub-users, and account data will be deleted immediately.");
     if (!confirm2) return;
 
     try {
@@ -325,10 +340,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         await clearSavedProducts();
         await clearSavedServices();
         await deleteSettings();
+        // TODO: Delete sub-users references (but can't delete their auth without Admin SDK)
 
         // 2. Delete Company Registration (free up name)
-        if (companyName) {
-           const normalizedCompanyName = companyName.trim().toLowerCase();
+        if (userProfile.companyName) {
+           const normalizedCompanyName = userProfile.companyName.trim().toLowerCase();
            await deleteDoc(doc(db, 'registered_companies', normalizedCompanyName));
         }
 
@@ -437,8 +453,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onLogout={onLogout}
-        companyName={companyName}
-        userEmail={user.email}
+        companyName={userProfile.companyName}
+        userEmail={user.email || userProfile.username}
         currentView={currentView}
         onViewChange={setCurrentView}
       />
@@ -521,6 +537,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
       {isSettingsOpen && (
         <SettingsModal
             currentSettings={settings}
+            userProfile={userProfile}
             onSave={handleSaveSettings}
             onClose={handleCloseSettings}
             onClearData={handleClearData}
@@ -549,27 +566,45 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [companyName, setCompanyName] = useState<string>('');
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
+      if (!currentUser) {
+          setProfileLoading(false);
+          setUserProfile(null);
+      }
     });
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
       if (user) {
+          setProfileLoading(true);
           const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
               if (docSnap.exists()) {
-                  setCompanyName(docSnap.data().companyName || '');
+                  const data = docSnap.data();
+                  // Migration for existing users: If role/parentId missing, assume Admin (legacy)
+                  const profile: UserProfile = {
+                      uid: user.uid,
+                      email: data.email || user.email || '',
+                      companyName: data.companyName || '',
+                      role: data.role || 'admin',
+                      parentId: data.parentId || user.uid,
+                      username: data.username
+                  };
+                  setUserProfile(profile);
+              } else {
+                  // Handle case where user exists in Auth but not Firestore (shouldn't happen easily)
+                   console.error("No user profile found");
               }
+              setProfileLoading(false);
           });
           return () => unsubscribe();
-      } else {
-          setCompanyName('');
       }
   }, [user]);
 
@@ -581,10 +616,13 @@ const App: React.FC = () => {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || (user && profileLoading)) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-brand-light">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary"></div>
+              <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-primary mb-4"></div>
+                  <p className="text-gray-500 text-sm">Authenticating...</p>
+              </div>
           </div>
       );
   }
@@ -597,8 +635,22 @@ const App: React.FC = () => {
   if (!user.emailVerified) {
     return <VerificationPendingScreen user={user} onLogout={handleLogout} />;
   }
+  
+  // Guard against missing profile after loading
+  if (!userProfile) {
+      return <div className="min-h-screen flex justify-center items-center text-red-600">Error: User profile could not be loaded.</div>
+  }
 
-  return <Dashboard key={user.uid} user={user} companyName={companyName} onLogout={handleLogout} />;
+  // Determine Data Owner (If user is admin, they own data. If user, their parent owns data)
+  const dataOwnerId = userProfile.role === 'admin' ? user.uid : userProfile.parentId;
+
+  return <Dashboard 
+            key={user.uid} 
+            user={user} 
+            userProfile={userProfile}
+            dataOwnerId={dataOwnerId}
+            onLogout={handleLogout} 
+        />;
 };
 
 export default App;

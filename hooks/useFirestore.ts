@@ -11,25 +11,25 @@ import {
   writeBatch,
   getDocs
 } from 'firebase/firestore';
-import { Warranty, AppSettings, Customer, SavedProduct, SavedService } from '../types';
+import { Warranty, AppSettings, Customer, SavedProduct, SavedService, SubUser } from '../types';
 
 // Helper to remove undefined values which Firestore dislikes
 const sanitize = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
 };
 
-export const useWarranties = (userId: string) => {
+export const useWarranties = (dataOwnerId: string) => {
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userId) {
+    if (!dataOwnerId) {
         setWarranties([]);
         setLoading(false);
         return;
     }
 
-    const q = query(collection(db, 'users', userId, 'warranties'));
+    const q = query(collection(db, 'users', dataOwnerId, 'warranties'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => doc.data() as Warranty);
@@ -41,31 +41,31 @@ export const useWarranties = (userId: string) => {
     });
 
     return () => unsubscribe();
-  }, [userId]);
+  }, [dataOwnerId]);
 
   const addWarranty = async (warranty: Warranty) => {
-    await setDoc(doc(db, 'users', userId, 'warranties', warranty.id), sanitize(warranty));
+    await setDoc(doc(db, 'users', dataOwnerId, 'warranties', warranty.id), sanitize(warranty));
   };
 
   const updateWarranty = async (warranty: Warranty) => {
-    await setDoc(doc(db, 'users', userId, 'warranties', warranty.id), sanitize(warranty), { merge: true });
+    await setDoc(doc(db, 'users', dataOwnerId, 'warranties', warranty.id), sanitize(warranty), { merge: true });
   };
 
   const deleteWarranty = async (id: string) => {
-    await deleteDoc(doc(db, 'users', userId, 'warranties', id));
+    await deleteDoc(doc(db, 'users', dataOwnerId, 'warranties', id));
   };
   
   const bulkDeleteWarranties = async (ids: string[]) => {
       const batch = writeBatch(db);
       ids.forEach(id => {
-          const ref = doc(db, 'users', userId, 'warranties', id);
+          const ref = doc(db, 'users', dataOwnerId, 'warranties', id);
           batch.delete(ref);
       });
       await batch.commit();
   }
 
   const clearWarranties = async () => {
-      const q = query(collection(db, 'users', userId, 'warranties'));
+      const q = query(collection(db, 'users', dataOwnerId, 'warranties'));
       const snapshot = await getDocs(q);
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => {
@@ -77,62 +77,62 @@ export const useWarranties = (userId: string) => {
   return { warranties, loading, addWarranty, updateWarranty, deleteWarranty, bulkDeleteWarranties, clearWarranties };
 };
 
-export const useSettings = (userId: string) => {
+export const useSettings = (dataOwnerId: string) => {
     const [settings, setSettings] = useState<AppSettings>({ expiryReminderDays: 30 });
     
     useEffect(() => {
-        if (!userId) return;
+        if (!dataOwnerId) return;
         
-        const unsubscribe = onSnapshot(doc(db, 'users', userId, 'settings', 'general'), (docSnap) => {
+        const unsubscribe = onSnapshot(doc(db, 'users', dataOwnerId, 'settings', 'general'), (docSnap) => {
             if (docSnap.exists()) {
                 setSettings(docSnap.data() as AppSettings);
             }
         });
         
         return () => unsubscribe();
-    }, [userId]);
+    }, [dataOwnerId]);
 
     const updateSettings = async (newSettings: AppSettings) => {
-        await setDoc(doc(db, 'users', userId, 'settings', 'general'), sanitize(newSettings), { merge: true });
+        await setDoc(doc(db, 'users', dataOwnerId, 'settings', 'general'), sanitize(newSettings), { merge: true });
     };
 
     const deleteSettings = async () => {
-        await deleteDoc(doc(db, 'users', userId, 'settings', 'general'));
+        await deleteDoc(doc(db, 'users', dataOwnerId, 'settings', 'general'));
     };
 
     return { settings, updateSettings, deleteSettings };
 }
 
-export const useCustomers = (userId: string) => {
+export const useCustomers = (dataOwnerId: string) => {
   const [customers, setCustomers] = useState<Customer[]>([]);
 
   useEffect(() => {
-    if (!userId) {
+    if (!dataOwnerId) {
         setCustomers([]);
         return;
     }
-    const q = query(collection(db, 'users', userId, 'customers'));
+    const q = query(collection(db, 'users', dataOwnerId, 'customers'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => doc.data() as Customer);
       setCustomers(data.sort((a, b) => a.name.localeCompare(b.name)));
     });
     return () => unsubscribe();
-  }, [userId]);
+  }, [dataOwnerId]);
 
   const addCustomer = async (customer: Customer) => {
-    await setDoc(doc(db, 'users', userId, 'customers', customer.id), sanitize(customer));
+    await setDoc(doc(db, 'users', dataOwnerId, 'customers', customer.id), sanitize(customer));
   };
 
   const updateCustomer = async (customer: Customer) => {
-    await setDoc(doc(db, 'users', userId, 'customers', customer.id), sanitize(customer), { merge: true });
+    await setDoc(doc(db, 'users', dataOwnerId, 'customers', customer.id), sanitize(customer), { merge: true });
   };
 
   const deleteCustomer = async (id: string) => {
-    await deleteDoc(doc(db, 'users', userId, 'customers', id));
+    await deleteDoc(doc(db, 'users', dataOwnerId, 'customers', id));
   };
 
   const clearCustomers = async () => {
-      const q = query(collection(db, 'users', userId, 'customers'));
+      const q = query(collection(db, 'users', dataOwnerId, 'customers'));
       const snapshot = await getDocs(q);
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => {
@@ -144,36 +144,36 @@ export const useCustomers = (userId: string) => {
   return { customers, addCustomer, updateCustomer, deleteCustomer, clearCustomers };
 };
 
-export const useSavedProducts = (userId: string) => {
+export const useSavedProducts = (dataOwnerId: string) => {
   const [savedProducts, setSavedProducts] = useState<SavedProduct[]>([]);
 
   useEffect(() => {
-    if (!userId) {
+    if (!dataOwnerId) {
         setSavedProducts([]);
         return;
     }
-    const q = query(collection(db, 'users', userId, 'saved_products'));
+    const q = query(collection(db, 'users', dataOwnerId, 'saved_products'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => doc.data() as SavedProduct);
       setSavedProducts(data.sort((a, b) => a.name.localeCompare(b.name)));
     });
     return () => unsubscribe();
-  }, [userId]);
+  }, [dataOwnerId]);
 
   const addSavedProduct = async (product: SavedProduct) => {
-    await setDoc(doc(db, 'users', userId, 'saved_products', product.id), sanitize(product));
+    await setDoc(doc(db, 'users', dataOwnerId, 'saved_products', product.id), sanitize(product));
   };
 
   const updateSavedProduct = async (product: SavedProduct) => {
-    await setDoc(doc(db, 'users', userId, 'saved_products', product.id), sanitize(product), { merge: true });
+    await setDoc(doc(db, 'users', dataOwnerId, 'saved_products', product.id), sanitize(product), { merge: true });
   };
 
   const deleteSavedProduct = async (id: string) => {
-    await deleteDoc(doc(db, 'users', userId, 'saved_products', id));
+    await deleteDoc(doc(db, 'users', dataOwnerId, 'saved_products', id));
   };
 
   const clearSavedProducts = async () => {
-      const q = query(collection(db, 'users', userId, 'saved_products'));
+      const q = query(collection(db, 'users', dataOwnerId, 'saved_products'));
       const snapshot = await getDocs(q);
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => {
@@ -185,36 +185,36 @@ export const useSavedProducts = (userId: string) => {
   return { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct, clearSavedProducts };
 };
 
-export const useSavedServices = (userId: string) => {
+export const useSavedServices = (dataOwnerId: string) => {
   const [savedServices, setSavedServices] = useState<SavedService[]>([]);
 
   useEffect(() => {
-    if (!userId) {
+    if (!dataOwnerId) {
         setSavedServices([]);
         return;
     }
-    const q = query(collection(db, 'users', userId, 'saved_services'));
+    const q = query(collection(db, 'users', dataOwnerId, 'saved_services'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => doc.data() as SavedService);
       setSavedServices(data.sort((a, b) => a.name.localeCompare(b.name)));
     });
     return () => unsubscribe();
-  }, [userId]);
+  }, [dataOwnerId]);
 
   const addSavedService = async (service: SavedService) => {
-    await setDoc(doc(db, 'users', userId, 'saved_services', service.id), sanitize(service));
+    await setDoc(doc(db, 'users', dataOwnerId, 'saved_services', service.id), sanitize(service));
   };
 
   const updateSavedService = async (service: SavedService) => {
-    await setDoc(doc(db, 'users', userId, 'saved_services', service.id), sanitize(service), { merge: true });
+    await setDoc(doc(db, 'users', dataOwnerId, 'saved_services', service.id), sanitize(service), { merge: true });
   };
 
   const deleteSavedService = async (id: string) => {
-    await deleteDoc(doc(db, 'users', userId, 'saved_services', id));
+    await deleteDoc(doc(db, 'users', dataOwnerId, 'saved_services', id));
   };
 
   const clearSavedServices = async () => {
-      const q = query(collection(db, 'users', userId, 'saved_services'));
+      const q = query(collection(db, 'users', dataOwnerId, 'saved_services'));
       const snapshot = await getDocs(q);
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => {
@@ -225,6 +225,31 @@ export const useSavedServices = (userId: string) => {
 
   return { savedServices, addSavedService, updateSavedService, deleteSavedService, clearSavedServices };
 };
+
+export const useSubUsers = (adminId: string) => {
+    const [subUsers, setSubUsers] = useState<SubUser[]>([]);
+    
+    useEffect(() => {
+        if (!adminId) return;
+        
+        const q = query(collection(db, 'users', adminId, 'sub_users'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const data = snapshot.docs.map(doc => doc.data() as SubUser);
+            setSubUsers(data.sort((a, b) => a.username.localeCompare(b.username)));
+        });
+        
+        return () => unsubscribe();
+    }, [adminId]);
+    
+    const deleteSubUser = async (id: string) => {
+        await deleteDoc(doc(db, 'users', adminId, 'sub_users', id));
+        // Note: This only deletes the reference. Deleting the actual user auth and profile 
+        // requires Cloud Functions or Admin SDK usually, which we don't have here.
+        // We will just orphan the user for now in this client-side only implementation.
+    };
+    
+    return { subUsers, deleteSubUser };
+}
 
 export const restoreFirestoreData = async (userId: string, data: any) => {
     if (!userId || !data) return;

@@ -64,3 +64,19 @@ export interface SavedService {
   defaultWarrantyPeriod: number;
   defaultWarrantyUnit: 'days' | 'weeks' | 'months' | 'years';
 }
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  companyName: string;
+  role: 'admin' | 'user';
+  parentId: string; // If admin, this is their own uid. If user, this is the admin's uid.
+  username?: string;
+}
+
+export interface SubUser {
+  uid: string;
+  username: string;
+  displayName: string; // usually used for internal naming if needed, or just reuse username
+  createdAt: string;
+}

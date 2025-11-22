@@ -12,7 +12,7 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [companyName, setCompanyName] = useState('');
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -27,9 +27,14 @@ const LoginPage: React.FC<LoginPageProps> = () => {
 
     try {
       if (isSignUp) {
+        // REGISTRATION (ADMIN ONLY)
         if (!companyName.trim()) {
             throw new Error("Company Name is required.");
         }
+        if (!emailOrUsername.includes('@')) {
+            throw new Error("Please provide a valid email address for registration.");
+        }
+        const email = emailOrUsername;
 
         // Create user first to establish authentication
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -45,8 +50,6 @@ const LoginPage: React.FC<LoginPageProps> = () => {
             if (companySnap.exists()) {
                 const data = companySnap.data();
                 let existingUserEmail = data.email;
-
-                // If email is not stored in registered_companies (legacy data), try to fetch from user profile
                 if (!existingUserEmail && data.uid) {
                     try {
                         const userSnap = await getDoc(doc(db, 'users', data.uid));
@@ -57,7 +60,6 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                         console.log("Could not fetch existing user email", e);
                     }
                 }
-
                 throw new Error(`"${companyName}" have already been registered by user (${existingUserEmail || 'unknown'}).`);
             }
 
@@ -65,14 +67,16 @@ const LoginPage: React.FC<LoginPageProps> = () => {
             await setDoc(companyRef, {
                 name: companyName.trim(),
                 uid: user.uid,
-                email: email, // Store email for future duplicate checks
+                email: email,
                 createdAt: new Date().toISOString()
             });
 
-            // Create user profile with company info
+            // Create user profile with Admin Role
             await setDoc(doc(db, 'users', user.uid), {
                 companyName: companyName.trim(),
                 email: email,
+                role: 'admin',
+                parentId: user.uid, // Admins are their own parent
                 createdAt: new Date().toISOString()
             });
             
@@ -80,16 +84,30 @@ const LoginPage: React.FC<LoginPageProps> = () => {
             await sendEmailVerification(user);
 
         } catch (innerError: any) {
-            // If Firestore operations fail (e.g. duplicate company), delete the created auth user
+            // If Firestore operations fail, delete the created auth user
             await deleteUser(user);
             throw innerError;
         }
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        // LOGIN
+        let targetEmail = emailOrUsername;
+        
+        // Check if input is a username (no @)
+        if (!targetEmail.includes('@')) {
+            const username = targetEmail.trim().toLowerCase();
+            const usernameRef = doc(db, 'usernames', username);
+            const usernameSnap = await getDoc(usernameRef);
+            
+            if (!usernameSnap.exists()) {
+                throw new Error("Username not found. Please check your spelling or use your email.");
+            }
+            targetEmail = usernameSnap.data().email;
+        }
+
+        await signInWithEmailAndPassword(auth, targetEmail, password);
       }
-      // Auth listener in App.tsx will handle redirection
     } catch (err: any) {
-      // Handle specific custom errors first
+      // Handle specific custom errors
       if (err.message.includes("have already been registered by user") || err.message === "Company Name is required.") {
           if (err.message.includes("have already been registered by user")) {
               alert(err.message);
@@ -107,7 +125,7 @@ const LoginPage: React.FC<LoginPageProps> = () => {
             case 'auth/invalid-credential':
             case 'auth/user-not-found':
             case 'auth/wrong-password':
-                errorMessage = "Invalid email or password.";
+                errorMessage = "Invalid username/email or password.";
                 break;
             case 'auth/email-already-in-use':
                 errorMessage = "This email is already registered.";
@@ -136,14 +154,14 @@ const LoginPage: React.FC<LoginPageProps> = () => {
     setResetMessage('');
     setLoading(true);
 
-    if (!email) {
-        setError('Please enter your email address.');
+    if (!emailOrUsername || !emailOrUsername.includes('@')) {
+        setError('Please enter your email address for password reset.');
         setLoading(false);
         return;
     }
 
     try {
-        await sendPasswordResetEmail(auth, email);
+        await sendPasswordResetEmail(auth, emailOrUsername);
         setResetMessage('Check your email for a link to reset your password.');
     } catch (err) {
         const firebaseError = err as AuthError;
@@ -160,7 +178,7 @@ const LoginPage: React.FC<LoginPageProps> = () => {
 
   const handleClear = () => {
       setCompanyName('');
-      setEmail('');
+      setEmailOrUsername('');
       setPassword('');
       setError('');
       setResetMessage('');
@@ -219,8 +237,8 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                             required
                             className="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all sm:text-sm"
                             placeholder="name@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={emailOrUsername}
+                            onChange={(e) => setEmailOrUsername(e.target.value)}
                         />
                     </div>
 
@@ -277,15 +295,17 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                     )}
 
                     <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                            {isSignUp ? "Email Address" : "Email or Username"}
+                        </label>
                         <input
                             id="email"
-                            type="email"
+                            type="text"
                             required
                             className="mt-1 block w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-brand-primary outline-none transition-all sm:text-sm"
-                            placeholder="name@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder={isSignUp ? "name@example.com" : "name@example.com or username"}
+                            value={emailOrUsername}
+                            onChange={(e) => setEmailOrUsername(e.target.value)}
                         />
                     </div>
 
@@ -357,7 +377,7 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                             onClick={toggleMode}
                             className="ml-1 font-medium text-brand-primary hover:text-blue-500 focus:outline-none hover:underline"
                         >
-                            {isSignUp ? 'Sign In' : 'Sign Up'}
+                            {isSignUp ? 'Sign In' : 'Register Company'}
                         </button>
                     </p>
                 </div>

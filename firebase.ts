@@ -3,7 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyAaFCL5c0G7IctNFGOMjMJDoxl_7q4iIXA",
   authDomain: "gen-lang-client-0518963012.firebaseapp.com",
   projectId: "gen-lang-client-0518963012",
