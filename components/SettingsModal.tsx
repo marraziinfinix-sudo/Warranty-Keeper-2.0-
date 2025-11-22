@@ -413,8 +413,12 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
     // State for Direct Password Change
     const [changePwdUser, setChangePwdUser] = useState<SubUser | null>(null);
     const [newDirectPassword, setNewDirectPassword] = useState('');
+    const [currentDirectPassword, setCurrentDirectPassword] = useState('');
     const [pwdLoading, setPwdLoading] = useState(false);
     const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+    const [showNewDirectPwd, setShowNewDirectPwd] = useState(false);
+    const [showCurrentDirectPwd, setShowCurrentDirectPwd] = useState(false);
+
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -494,8 +498,10 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
             return;
         }
 
-        if (!changePwdUser.password) {
-            alert("Cannot verify current user password to perform update. Please use the Reset Email option instead.");
+        // Determine credentials
+        const pwdToUse = changePwdUser.password || currentDirectPassword;
+        if (!pwdToUse) {
+            alert("We need the user's current password to authorize the change.");
             return;
         }
 
@@ -505,19 +511,23 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
             const secondaryApp = initializeApp(firebaseConfig, appName);
             const secondaryAuth = getAuth(secondaryApp);
 
-            // 1. Sign in as the user using the OLD stored password
+            // 1. Sign in as the user
             try {
-                await signInWithEmailAndPassword(secondaryAuth, changePwdUser.username, changePwdUser.password);
-            } catch (signInErr) {
+                await signInWithEmailAndPassword(secondaryAuth, changePwdUser.username, pwdToUse);
+            } catch (signInErr: any) {
                 console.error(signInErr);
-                throw new Error("Could not authenticate as user. The stored password might be out of sync. Please use the Reset Email option.");
+                let msg = "Could not authenticate as user.";
+                if (signInErr.code === 'auth/wrong-password') {
+                    msg = "Incorrect current password provided.";
+                }
+                throw new Error(msg);
             }
 
             // 2. Update password
             if (secondaryAuth.currentUser) {
                 await updatePassword(secondaryAuth.currentUser, newDirectPassword);
                 
-                // 3. Update Firestore with NEW password
+                // 3. Update Firestore with NEW password so it is known next time
                 await updateDoc(doc(db, 'users', adminId, 'sub_users', changePwdUser.uid), {
                     password: newDirectPassword
                 });
@@ -525,6 +535,7 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
                 alert("Password updated successfully.");
                 setChangePwdUser(null);
                 setNewDirectPassword('');
+                setCurrentDirectPassword('');
             }
 
             await signOut(secondaryAuth);
@@ -608,16 +619,54 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
                      <div className="bg-white p-5 rounded-lg shadow-lg max-w-sm w-full" onClick={e => e.stopPropagation()}>
                         <h4 className="text-lg font-bold mb-3">Change Password for {changePwdUser.username}</h4>
                         <form onSubmit={handleChangeSubUserPassword}>
+                            {!changePwdUser.password && (
+                                <div className="mb-4 bg-yellow-50 p-2 rounded text-xs text-yellow-800 border border-yellow-100">
+                                    <p><strong>Note:</strong> We do not have the current password for this user. Please enter it below to verify authorization.</p>
+                                </div>
+                            )}
+                            
+                            {!changePwdUser.password && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700">Current User Password</label>
+                                    <div className="relative mt-1">
+                                        <input 
+                                            type={showCurrentDirectPwd ? "text" : "password"} 
+                                            value={currentDirectPassword}
+                                            onChange={e => setCurrentDirectPassword(e.target.value)}
+                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm pr-10"
+                                            placeholder="Enter current password"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCurrentDirectPwd(!showCurrentDirectPwd)}
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                        >
+                                            {showCurrentDirectPwd ? <EyeOffIcon /> : <EyeIcon />}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="mb-4">
                                 <label className="block text-sm font-medium text-gray-700">New Password</label>
-                                <input 
-                                    type="text" 
-                                    value={newDirectPassword}
-                                    onChange={e => setNewDirectPassword(e.target.value)}
-                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
-                                    placeholder="New Password"
-                                    required
-                                />
+                                <div className="relative mt-1">
+                                    <input 
+                                        type={showNewDirectPwd ? "text" : "password"} 
+                                        value={newDirectPassword}
+                                        onChange={e => setNewDirectPassword(e.target.value)}
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm pr-10"
+                                        placeholder="Min. 6 characters"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewDirectPwd(!showNewDirectPwd)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showNewDirectPwd ? <EyeOffIcon /> : <EyeIcon />}
+                                    </button>
+                                </div>
                             </div>
                             <div className="flex justify-end gap-2">
                                 <button type="button" onClick={() => setChangePwdUser(null)} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
@@ -673,10 +722,12 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
                                                 onClick={() => {
                                                     setChangePwdUser(user);
                                                     setNewDirectPassword('');
+                                                    setCurrentDirectPassword('');
+                                                    setShowNewDirectPwd(false);
+                                                    setShowCurrentDirectPwd(false);
                                                 }}
                                                 className="text-gray-500 hover:text-brand-primary p-1"
                                                 title="Change Password"
-                                                disabled={!user.password}
                                             >
                                                 <EditIcon />
                                             </button>
