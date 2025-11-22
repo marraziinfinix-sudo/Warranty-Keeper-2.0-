@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { auth, db } from '../firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, AuthError, deleteUser } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, AuthError, deleteUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { EyeIcon, EyeOffIcon } from './icons/Icons';
 
@@ -75,6 +75,9 @@ const LoginPage: React.FC<LoginPageProps> = () => {
                 email: email,
                 createdAt: new Date().toISOString()
             });
+            
+            // Send Verification Email
+            await sendEmailVerification(user);
 
         } catch (innerError: any) {
             // If Firestore operations fail (e.g. duplicate company), delete the created auth user

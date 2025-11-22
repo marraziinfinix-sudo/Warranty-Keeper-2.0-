@@ -14,6 +14,7 @@ import SaveEntitiesModal from './components/SaveEntitiesModal';
 import { triggerShare, getWarrantyStatusInfo, exportWarrantiesToCSV } from './utils/warrantyUtils';
 import SettingsModal from './components/SettingsModal';
 import LoginPage from './components/LoginPage';
+import VerificationPendingScreen from './components/VerificationPendingScreen';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -476,6 +477,11 @@ const App: React.FC = () => {
 
   if (!user) {
     return <LoginPage />;
+  }
+
+  // Email Verification Guard
+  if (!user.emailVerified) {
+    return <VerificationPendingScreen user={user} onLogout={handleLogout} />;
   }
 
   return <Dashboard key={user.uid} user={user} companyName={companyName} onLogout={handleLogout} />;
