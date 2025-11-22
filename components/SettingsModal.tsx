@@ -1,11 +1,11 @@
 
 import React, { useState, useRef } from 'react';
 import { AppSettings, UserProfile, SubUser } from '../types';
-import { DownloadIcon, UploadIcon, UsersIcon, PlusIcon, TrashIcon, LockIcon, KeyIcon, EyeIcon, EyeOffIcon } from './icons/Icons';
+import { DownloadIcon, UploadIcon, UsersIcon, PlusIcon, TrashIcon, LockIcon, KeyIcon, EyeIcon, EyeOffIcon, EditIcon } from './icons/Icons';
 import { useSubUsers } from '../hooks/useFirestore';
-import { initializeApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signOut, sendEmailVerification, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
-import { setDoc, doc, getDoc } from 'firebase/firestore';
+import { initializeApp, deleteApp, FirebaseApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut, sendEmailVerification, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
+import { setDoc, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { firebaseConfig, db, auth } from '../firebase'; // Re-import config for secondary app
 
 interface SettingsModalProps {
@@ -151,7 +151,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         )}
         
         {activeTab === 'security' && (
-            <SecurityTab userEmail={userProfile.email} />
+            <SecurityTab userProfile={userProfile} />
         )}
 
         {activeTab === 'data' && isAdmin && (
@@ -237,7 +237,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   );
 };
 
-const SecurityTab: React.FC<{ userEmail: string }> = ({ userEmail }) => {
+const SecurityTab: React.FC<{ userProfile: UserProfile }> = ({ userProfile }) => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -278,6 +278,18 @@ const SecurityTab: React.FC<{ userEmail: string }> = ({ userEmail }) => {
             // Update password
             await updatePassword(user, newPassword);
             
+            // If user is a Sub-user, update the password in Firestore for Admin visibility
+            if (userProfile.role === 'user') {
+                try {
+                    await updateDoc(doc(db, 'users', userProfile.parentId, 'sub_users', user.uid), {
+                        password: newPassword
+                    });
+                } catch (fsErr) {
+                    console.error("Could not sync password to Firestore", fsErr);
+                    // Non-critical error for the user, but affects admin visibility
+                }
+            }
+            
             setMessage({ text: 'Password updated successfully!', type: 'success' });
             setCurrentPassword('');
             setNewPassword('');
@@ -301,7 +313,7 @@ const SecurityTab: React.FC<{ userEmail: string }> = ({ userEmail }) => {
         <div className="p-6 pt-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Change Your Password</h3>
             <p className="text-sm text-gray-500 mb-4">
-                Update the password for your account (<span className="font-medium text-gray-700">{userEmail}</span>).
+                Update the password for your account (<span className="font-medium text-gray-700">{userProfile.email}</span>).
             </p>
 
             {message.text && (
@@ -387,6 +399,12 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
     const [newUserEmail, setNewUserEmail] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    
+    // State for Direct Password Change
+    const [changePwdUser, setChangePwdUser] = useState<SubUser | null>(null);
+    const [newDirectPassword, setNewDirectPassword] = useState('');
+    const [pwdLoading, setPwdLoading] = useState(false);
+    const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -403,8 +421,10 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
         }
 
         try {
-            // 1. Create User in Firebase Auth (using secondary app to avoid logging out admin)
-            const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+            // Create a secondary app instance to create user without logging out current admin
+            // Use a unique name to avoid conflict
+            const appName = `SecondaryApp-${Date.now()}`;
+            const secondaryApp = initializeApp(firebaseConfig, appName);
             const secondaryAuth = getAuth(secondaryApp);
             
             let userCred;
@@ -430,18 +450,18 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
                 createdAt: new Date().toISOString()
             });
 
-            // 3. Add to Sub-user list for Admin
+            // 3. Add to Sub-user list for Admin WITH PASSWORD
             await setDoc(doc(db, 'users', adminId, 'sub_users', newUid), {
                 uid: newUid,
                 username: email,
                 displayName: email,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                password: password 
             });
 
             // Cleanup
             await signOut(secondaryAuth);
-            // Ideally deleteApp(secondaryApp) but Firebase JS SDK doesn't export it easily in v9 modular without full import. 
-            // It's fine to leave instance for session or let it GC.
+            await deleteApp(secondaryApp);
 
             setNewUserEmail('');
             setIsCreating(false);
@@ -455,13 +475,73 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
         }
     };
     
+    const handleChangeSubUserPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!changePwdUser || !newDirectPassword) return;
+        
+        if (newDirectPassword.length < 6) {
+            alert("Password must be at least 6 characters.");
+            return;
+        }
+
+        if (!changePwdUser.password) {
+            alert("Cannot verify current user password to perform update. Please use the Reset Email option instead.");
+            return;
+        }
+
+        setPwdLoading(true);
+        try {
+            const appName = `PwdChangeApp-${Date.now()}`;
+            const secondaryApp = initializeApp(firebaseConfig, appName);
+            const secondaryAuth = getAuth(secondaryApp);
+
+            // 1. Sign in as the user using the OLD stored password
+            try {
+                await signInWithEmailAndPassword(secondaryAuth, changePwdUser.username, changePwdUser.password);
+            } catch (signInErr) {
+                console.error(signInErr);
+                throw new Error("Could not authenticate as user. The stored password might be out of sync. Please use the Reset Email option.");
+            }
+
+            // 2. Update password
+            if (secondaryAuth.currentUser) {
+                await updatePassword(secondaryAuth.currentUser, newDirectPassword);
+                
+                // 3. Update Firestore with NEW password
+                await updateDoc(doc(db, 'users', adminId, 'sub_users', changePwdUser.uid), {
+                    password: newDirectPassword
+                });
+                
+                alert("Password updated successfully.");
+                setChangePwdUser(null);
+                setNewDirectPassword('');
+            }
+
+            await signOut(secondaryAuth);
+            await deleteApp(secondaryApp);
+
+        } catch (err: any) {
+            alert(err.message || "Failed to update password.");
+        } finally {
+            setPwdLoading(false);
+        }
+    }
+
+    const togglePasswordVisibility = (uid: string) => {
+        setVisiblePasswords(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(uid)) newSet.delete(uid);
+            else newSet.add(uid);
+            return newSet;
+        });
+    };
+
     const handleResetPassword = async (email: string) => {
-        if(window.confirm(`Send a password reset email to ${email}?\n\nThis allows the user to set their own new password safely via email link.`)) {
+        if(window.confirm(`Send a password reset email to ${email}?\n\nUse this if you cannot change the password directly.`)) {
             try {
                 await sendPasswordResetEmail(auth, email);
                 alert(`Password reset email sent to ${email}.`);
             } catch (err: any) {
-                console.error("Error sending reset email:", err);
                 alert("Failed to send reset email. " + (err.message || ""));
             }
         }
@@ -471,7 +551,7 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
         <div className="p-6 pt-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Manage Users</h3>
             <p className="text-sm text-gray-500 mb-4">
-                Create accounts for your team. Admin can reset user passwords here if needed.
+                Create and manage accounts for your team.
             </p>
 
             {isCreating ? (
@@ -511,34 +591,89 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
                     <PlusIcon /> Add New User
                 </button>
             )}
+            
+            {/* Change Password Modal */}
+            {changePwdUser && (
+                <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-[60]" onClick={() => setChangePwdUser(null)}>
+                     <div className="bg-white p-5 rounded-lg shadow-lg max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                        <h4 className="text-lg font-bold mb-3">Change Password for {changePwdUser.username}</h4>
+                        <form onSubmit={handleChangeSubUserPassword}>
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700">New Password</label>
+                                <input 
+                                    type="text" 
+                                    value={newDirectPassword}
+                                    onChange={e => setNewDirectPassword(e.target.value)}
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                    placeholder="New Password"
+                                    required
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <button type="button" onClick={() => setChangePwdUser(null)} className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+                                <button type="submit" disabled={pwdLoading} className="px-3 py-2 bg-brand-primary text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50">
+                                    {pwdLoading ? 'Saving...' : 'Change Password'}
+                                </button>
+                            </div>
+                        </form>
+                     </div>
+                </div>
+            )}
 
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-hidden overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Password</th>
                             <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {subUsers.length === 0 ? (
                             <tr>
-                                <td colSpan={2} className="px-4 py-4 text-center text-sm text-gray-500">
+                                <td colSpan={3} className="px-4 py-4 text-center text-sm text-gray-500">
                                     No sub-users created yet.
                                 </td>
                             </tr>
                         ) : (
                             subUsers.map(user => (
                                 <tr key={user.uid}>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 flex items-center gap-2">
-                                        <UsersIcon /> {user.username}
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                        <div className="flex items-center gap-2">
+                                            <UsersIcon /> {user.username}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-600">
+                                        <div className="flex items-center gap-2">
+                                            <span>{user.password ? (visiblePasswords.has(user.uid) ? user.password : '••••••') : 'Unknown'}</span>
+                                            {user.password && (
+                                                <button 
+                                                    onClick={() => togglePasswordVisibility(user.uid)}
+                                                    className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                                                >
+                                                    {visiblePasswords.has(user.uid) ? <EyeOffIcon /> : <EyeIcon />}
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex justify-end items-center gap-2">
                                             <button
+                                                onClick={() => {
+                                                    setChangePwdUser(user);
+                                                    setNewDirectPassword('');
+                                                }}
+                                                className="text-gray-500 hover:text-brand-primary p-1"
+                                                title="Change Password"
+                                                disabled={!user.password}
+                                            >
+                                                <EditIcon />
+                                            </button>
+                                            <button
                                                 onClick={() => handleResetPassword(user.username)}
                                                 className="text-gray-400 hover:text-brand-primary p-1"
-                                                title="Send Password Reset Email"
+                                                title="Send Password Reset Email (Fallback)"
                                             >
                                                 <KeyIcon />
                                             </button>

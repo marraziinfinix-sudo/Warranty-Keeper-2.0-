@@ -79,4 +79,5 @@ export interface SubUser {
   username: string;
   displayName: string; // usually used for internal naming if needed, or just reuse username
   createdAt: string;
+  password?: string; // Stored password for Admin visibility
 }
