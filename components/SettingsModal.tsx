@@ -151,7 +151,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         )}
         
         {activeTab === 'security' && (
-            <SecurityTab />
+            <SecurityTab userEmail={userProfile.email} />
         )}
 
         {activeTab === 'data' && isAdmin && (
@@ -237,7 +237,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   );
 };
 
-const SecurityTab: React.FC = () => {
+const SecurityTab: React.FC<{ userEmail: string }> = ({ userEmail }) => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -299,8 +299,10 @@ const SecurityTab: React.FC = () => {
 
     return (
         <div className="p-6 pt-2">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Change Password</h3>
-            <p className="text-sm text-gray-500 mb-4">Update the password for your account.</p>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Change Your Password</h3>
+            <p className="text-sm text-gray-500 mb-4">
+                Update the password for your account (<span className="font-medium text-gray-700">{userEmail}</span>).
+            </p>
 
             {message.text && (
                 <div className={`mb-4 p-3 rounded text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
@@ -454,7 +456,7 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
     };
     
     const handleResetPassword = async (email: string) => {
-        if(window.confirm(`Send a password reset email to ${email}?`)) {
+        if(window.confirm(`Send a password reset email to ${email}?\n\nThis allows the user to set their own new password safely via email link.`)) {
             try {
                 await sendPasswordResetEmail(auth, email);
                 alert(`Password reset email sent to ${email}.`);
@@ -468,7 +470,9 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
     return (
         <div className="p-6 pt-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Manage Users</h3>
-            <p className="text-sm text-gray-500 mb-4">Create accounts for your team to access the app.</p>
+            <p className="text-sm text-gray-500 mb-4">
+                Create accounts for your team. Admin can reset user passwords here if needed.
+            </p>
 
             {isCreating ? (
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
