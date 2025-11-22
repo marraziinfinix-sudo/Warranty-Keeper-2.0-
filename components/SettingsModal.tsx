@@ -678,7 +678,78 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
                 </div>
             )}
 
-            <div className="border rounded-lg overflow-hidden overflow-x-auto">
+            {/* Mobile View: Stacked Cards */}
+            <div className="md:hidden space-y-4">
+                {subUsers.length === 0 ? (
+                     <div className="text-center text-gray-500 text-sm py-4">
+                        No sub-users created yet.
+                    </div>
+                ) : (
+                    subUsers.map(user => (
+                        <div key={user.uid} className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+                            <div className="mb-3">
+                                <label className="text-xs font-bold text-gray-500 uppercase">Username</label>
+                                <div className="flex items-center gap-2 mt-1 text-sm text-gray-900 font-medium">
+                                    <UsersIcon /> <span className="break-all">{user.username}</span>
+                                </div>
+                            </div>
+                            
+                            <div className="mb-4">
+                                <label className="text-xs font-bold text-gray-500 uppercase">Password</label>
+                                <div className="flex items-center justify-between mt-1 bg-gray-50 p-2 rounded border border-gray-100">
+                                    <span className="font-mono text-sm text-gray-700">
+                                        {user.password ? (visiblePasswords.has(user.uid) ? user.password : '••••••') : 'Unknown'}
+                                    </span>
+                                    {user.password && (
+                                        <button 
+                                            onClick={() => togglePasswordVisibility(user.uid)}
+                                            className="text-gray-400 hover:text-gray-600 p-1"
+                                        >
+                                            {visiblePasswords.has(user.uid) ? <EyeOffIcon /> : <EyeIcon />}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-3 border-t border-gray-100">
+                                <button
+                                    onClick={() => {
+                                        setChangePwdUser(user);
+                                        setNewDirectPassword('');
+                                        setCurrentDirectPassword('');
+                                        setShowNewDirectPwd(false);
+                                        setShowCurrentDirectPwd(false);
+                                    }}
+                                    className="flex-1 flex justify-center items-center gap-1.5 px-3 py-2 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded hover:bg-gray-50"
+                                >
+                                    <EditIcon /> Change Pwd
+                                </button>
+                                <button
+                                    onClick={() => handleResetPassword(user.username)}
+                                    className="p-2 bg-white border border-gray-300 text-gray-500 hover:text-brand-primary rounded hover:bg-gray-50"
+                                    title="Send Reset Email"
+                                >
+                                    <KeyIcon />
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        if(window.confirm("Remove this user from list? (Note: Account deletion requires contacting support)")) {
+                                            deleteSubUser(user.uid);
+                                        }
+                                    }} 
+                                    className="p-2 bg-white border border-gray-300 text-gray-500 hover:text-red-600 rounded hover:bg-red-50"
+                                    title="Remove User"
+                                >
+                                    <TrashIcon />
+                                </button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Desktop View: Table */}
+            <div className="hidden md:block border rounded-lg overflow-hidden overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
