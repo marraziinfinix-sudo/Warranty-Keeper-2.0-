@@ -43,13 +43,29 @@ const LoginPage: React.FC<LoginPageProps> = () => {
             // Check if company name is already taken
             const companySnap = await getDoc(companyRef);
             if (companySnap.exists()) {
-                throw new Error("This Company Name is already registered.");
+                const data = companySnap.data();
+                let existingUserEmail = data.email;
+
+                // If email is not stored in registered_companies (legacy data), try to fetch from user profile
+                if (!existingUserEmail && data.uid) {
+                    try {
+                        const userSnap = await getDoc(doc(db, 'users', data.uid));
+                        if (userSnap.exists()) {
+                            existingUserEmail = userSnap.data().email;
+                        }
+                    } catch (e) {
+                        console.log("Could not fetch existing user email", e);
+                    }
+                }
+
+                throw new Error(`"${companyName}" have already been registered by user (${existingUserEmail || 'unknown'}).`);
             }
 
             // Reserve the company name
             await setDoc(companyRef, {
                 name: companyName.trim(),
                 uid: user.uid,
+                email: email, // Store email for future duplicate checks
                 createdAt: new Date().toISOString()
             });
 
@@ -71,7 +87,10 @@ const LoginPage: React.FC<LoginPageProps> = () => {
       // Auth listener in App.tsx will handle redirection
     } catch (err: any) {
       // Handle specific custom errors first
-      if (err.message === "This Company Name is already registered." || err.message === "Company Name is required.") {
+      if (err.message.includes("have already been registered by user") || err.message === "Company Name is required.") {
+          if (err.message.includes("have already been registered by user")) {
+              alert(err.message);
+          }
           setError(err.message);
           setLoading(false);
           return;
