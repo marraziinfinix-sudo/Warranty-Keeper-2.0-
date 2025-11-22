@@ -225,3 +225,80 @@ export const useSavedServices = (userId: string) => {
 
   return { savedServices, addSavedService, updateSavedService, deleteSavedService, clearSavedServices };
 };
+
+export const restoreFirestoreData = async (userId: string, data: any) => {
+    if (!userId || !data) return;
+
+    const commitBatch = async (operations: any[]) => {
+        if (operations.length === 0) return;
+        // Firestore limits batches to 500 operations
+        const chunkSize = 450; 
+        for (let i = 0; i < operations.length; i += chunkSize) {
+            const batch = writeBatch(db);
+            const chunk = operations.slice(i, i + chunkSize);
+            chunk.forEach(op => {
+                if (op.type === 'set') {
+                    batch.set(op.ref, op.data);
+                }
+            });
+            await batch.commit();
+        }
+    };
+
+    const operations = [];
+
+    // 1. Settings
+    if (data.settings) {
+        operations.push({
+            type: 'set',
+            ref: doc(db, 'users', userId, 'settings', 'general'),
+            data: sanitize(data.settings)
+        });
+    }
+
+    // 2. Warranties
+    if (Array.isArray(data.warranties)) {
+        data.warranties.forEach((w: Warranty) => {
+            operations.push({
+                type: 'set',
+                ref: doc(db, 'users', userId, 'warranties', w.id),
+                data: sanitize(w)
+            });
+        });
+    }
+
+    // 3. Customers
+    if (Array.isArray(data.customers)) {
+        data.customers.forEach((c: Customer) => {
+            operations.push({
+                type: 'set',
+                ref: doc(db, 'users', userId, 'customers', c.id),
+                data: sanitize(c)
+            });
+        });
+    }
+
+    // 4. Saved Products
+    if (Array.isArray(data.savedProducts)) {
+        data.savedProducts.forEach((p: SavedProduct) => {
+            operations.push({
+                type: 'set',
+                ref: doc(db, 'users', userId, 'saved_products', p.id),
+                data: sanitize(p)
+            });
+        });
+    }
+    
+    // 5. Saved Services
+    if (Array.isArray(data.savedServices)) {
+        data.savedServices.forEach((s: SavedService) => {
+            operations.push({
+                type: 'set',
+                ref: doc(db, 'users', userId, 'saved_services', s.id),
+                data: sanitize(s)
+            });
+        });
+    }
+
+    await commitBatch(operations);
+};

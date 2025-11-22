@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Warranty, AppSettings, WarrantyStatus, Customer, SavedProduct, SavedService } from './types';
-import { useWarranties, useSettings, useCustomers, useSavedProducts, useSavedServices } from './hooks/useFirestore';
+import { useWarranties, useSettings, useCustomers, useSavedProducts, useSavedServices, restoreFirestoreData } from './hooks/useFirestore';
 import WarrantyForm from './components/WarrantyForm';
 import WarrantyList from './components/WarrantyList';
 import CustomersView from './components/CustomersView';
@@ -237,6 +237,50 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
           alert("Failed to clear data. Please try again.");
       }
   };
+  
+  const handleBackup = () => {
+      const backupData = {
+          version: "1.0",
+          timestamp: new Date().toISOString(),
+          warranties,
+          customers,
+          savedProducts,
+          savedServices,
+          settings
+      };
+      
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", `warranty_keeper_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchorNode); // required for firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+  };
+
+  const handleRestore = async (file: File) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+          try {
+              const content = e.target?.result;
+              if (typeof content === 'string') {
+                  const json = JSON.parse(content);
+                  // Validate basic structure
+                  if (!json.warranties && !json.customers && !json.savedProducts) {
+                      throw new Error("Invalid backup file format.");
+                  }
+                  
+                  await restoreFirestoreData(user.uid, json);
+                  alert("Data restored successfully!");
+                  setIsSettingsOpen(false);
+              }
+          } catch (error) {
+              console.error("Restore error:", error);
+              alert("Failed to restore data. Please ensure the file is a valid backup JSON.");
+          }
+      };
+      reader.readAsText(file);
+  };
 
   const handleDeleteAccount = async () => {
     const confirm1 = window.confirm("DANGER: Are you sure you want to delete your account? This action is PERMANENT and cannot be undone.");
@@ -452,6 +496,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
             onClose={handleCloseSettings}
             onClearData={handleClearData}
             onDeleteAccount={handleDeleteAccount}
+            onBackup={handleBackup}
+            onRestore={handleRestore}
         />
       )}
       

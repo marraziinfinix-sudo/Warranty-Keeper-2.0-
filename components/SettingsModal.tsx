@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AppSettings } from '../types';
+import { DownloadIcon, UploadIcon } from './icons/Icons';
 
 interface SettingsModalProps {
   currentSettings: AppSettings;
@@ -8,10 +9,21 @@ interface SettingsModalProps {
   onClose: () => void;
   onClearData: (type: 'warranties' | 'customers' | 'products' | 'services' | 'all') => Promise<void>;
   onDeleteAccount: () => Promise<void>;
+  onBackup: () => void;
+  onRestore: (file: File) => Promise<void>;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, onClose, onClearData, onDeleteAccount }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ 
+    currentSettings, 
+    onSave, 
+    onClose, 
+    onClearData, 
+    onDeleteAccount,
+    onBackup,
+    onRestore
+}) => {
   const [settings, setSettings] = useState<AppSettings>(currentSettings);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -38,6 +50,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
       
       if (window.confirm(messages[type])) {
           onClearData(type);
+      }
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          if (window.confirm("Restoring data will merge the backup file with your current cloud data. Existing records with the same ID will be updated. Continue?")) {
+              onRestore(file);
+          }
+      }
+      // Reset input
+      if (fileInputRef.current) {
+          fileInputRef.current.value = '';
       }
   };
 
@@ -67,6 +92,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                             className="block w-20 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
                         />
                         <span className="text-sm font-medium text-gray-700">days before expiry.</span>
+                    </div>
+                </div>
+
+                <hr className="border-gray-200" />
+                
+                <div>
+                    <h3 className="text-lg font-semibold text-brand-primary">Data Backup & Restore</h3>
+                    <p className="text-sm text-gray-500 mt-1">Save your data locally or restore from a file.</p>
+                    
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                        <button 
+                            type="button" 
+                            onClick={onBackup}
+                            className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                        >
+                            <DownloadIcon />
+                            <span className="text-sm font-medium text-gray-700 mt-1">Backup to File</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                        >
+                            <UploadIcon />
+                            <span className="text-sm font-medium text-gray-700 mt-1">Restore from File</span>
+                        </button>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                            accept=".json"
+                            className="hidden" 
+                        />
                     </div>
                 </div>
 
