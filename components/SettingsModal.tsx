@@ -77,161 +77,167 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-end md:items-center p-0 md:p-4" onClick={onClose}>
+      <div className="bg-white w-full md:max-w-lg max-h-[90vh] md:rounded-lg rounded-t-2xl shadow-xl flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         
-        <div className="flex justify-between items-center p-6 pb-2">
-            <h2 className="text-2xl font-bold text-brand-dark">Settings</h2>
-            <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
-        </div>
-
-        <div className="px-6 mb-4 border-b border-gray-200 overflow-x-auto">
-            <div className="flex gap-4 min-w-max">
-                <button 
-                    className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'general' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('general')}
-                >
-                    General
-                </button>
-                
-                <button 
-                        className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'security' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                    onClick={() => setActiveTab('security')}
-                >
-                    Security
-                </button>
-                
-                {isAdmin && (
-                    <>
-                        <button 
-                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'data' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            onClick={() => setActiveTab('data')}
-                        >
-                            Data Management
-                        </button>
-                        <button 
-                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            onClick={() => setActiveTab('users')}
-                        >
-                            User Management
-                        </button>
-                    </>
-                )}
+        {/* Fixed Header Section */}
+        <div className="flex-shrink-0 bg-white z-10">
+            <div className="flex justify-between items-center p-4 md:p-6 pb-2">
+                <h2 className="text-xl md:text-2xl font-bold text-brand-dark">Settings</h2>
+                <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-3xl leading-none">&times;</button>
             </div>
-        </div>
 
-        {activeTab === 'general' && (
-            <form onSubmit={handleSave}>
-            <div className="p-6 pt-2">
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-800">Notification Preferences</h3>
-                        <p className="text-sm text-gray-500 mt-1">Configure when you see the 'Expiring' status.</p>
-                        <div className="flex items-center gap-4 mt-3">
-                            <label htmlFor="expiryReminderDays" className="block text-sm font-medium text-gray-700">Remind me</label>
-                            <input
-                                type="number"
-                                id="expiryReminderDays"
-                                name="expiryReminderDays"
-                                value={settings.expiryReminderDays}
-                                onChange={handleChange}
-                                min="1"
-                                className="block w-20 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
-                            />
-                            <span className="text-sm font-medium text-gray-700">days before expiry.</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
-                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-blue-600 transition">Save</button>
-            </div>
-            </form>
-        )}
-        
-        {activeTab === 'security' && (
-            <SecurityTab userProfile={userProfile} />
-        )}
-
-        {activeTab === 'data' && isAdmin && (
-             <div className="p-6 pt-2">
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="text-lg font-semibold text-brand-primary">Data Backup & Restore</h3>
-                        <p className="text-sm text-gray-500 mt-1">Save your data locally or restore from a file.</p>
-                        
-                        <div className="grid grid-cols-2 gap-3 mt-3">
-                            <button 
-                                type="button" 
-                                onClick={onBackup}
-                                className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                            >
-                                <DownloadIcon />
-                                <span className="text-sm font-medium text-gray-700 mt-1">Backup to File</span>
-                            </button>
-                            <button 
-                                type="button" 
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                            >
-                                <UploadIcon />
-                                <span className="text-sm font-medium text-gray-700 mt-1">Restore from File</span>
-                            </button>
-                            <input 
-                                type="file" 
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                accept=".json"
-                                className="hidden" 
-                            />
-                        </div>
-                    </div>
-
-                    <hr className="border-gray-200" />
+            <div className="px-4 md:px-6 border-b border-gray-200 overflow-x-auto no-scrollbar">
+                <div className="flex gap-4 min-w-max">
+                    <button 
+                        className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'general' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setActiveTab('general')}
+                    >
+                        General
+                    </button>
                     
-                    <div className="space-y-4">
-                        <div>
-                            <h3 className="text-lg font-semibold text-red-600">Data Cleanup</h3>
-                            <p className="text-sm text-gray-500 mt-1">Permanently delete specific data categories.</p>
-                        </div>
-                        
-                        <div className="space-y-3">
-                            <button type="button" onClick={() => handleClear('warranties')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
-                                Clear All Warranties
-                            </button>
-                            <button type="button" onClick={() => handleClear('customers')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
-                                Clear Customer List
-                            </button>
-                            <button type="button" onClick={() => handleClear('products')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
-                                Clear Product Catalog
-                            </button>
-                            <button type="button" onClick={() => handleClear('services')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
-                                Clear Service Catalog
-                            </button>
-                        </div>
-
-                        <div className="pt-4 mt-4 border-t border-gray-200">
-                             <h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
-                            <button type="button" onClick={() => handleClear('all')} className="w-full text-left px-4 py-3 border border-red-300 bg-red-50 rounded-md text-sm font-bold text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors mb-3">
-                                Factory Reset (Clear All Data)
+                    <button 
+                            className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'security' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setActiveTab('security')}
+                    >
+                        Security
+                    </button>
+                    
+                    {isAdmin && (
+                        <>
+                            <button 
+                                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'data' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                onClick={() => setActiveTab('data')}
+                            >
+                                Data Management
                             </button>
                             <button 
-                                type="button" 
-                                onClick={onDeleteAccount} 
-                                className="w-full text-left px-4 py-3 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors shadow-sm"
+                                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                onClick={() => setActiveTab('users')}
                             >
-                                Delete Account Permanently
+                                User Management
                             </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+
+        {/* Scrollable Content Section */}
+        <div className="overflow-y-auto flex-grow">
+            {activeTab === 'general' && (
+                <form onSubmit={handleSave} className="flex flex-col h-full">
+                <div className="p-4 md:p-6 pt-4 flex-grow">
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-800">Notification Preferences</h3>
+                            <p className="text-sm text-gray-500 mt-1">Configure when you see the 'Expiring' status.</p>
+                            <div className="flex items-center gap-4 mt-3">
+                                <label htmlFor="expiryReminderDays" className="block text-sm font-medium text-gray-700">Remind me</label>
+                                <input
+                                    type="number"
+                                    id="expiryReminderDays"
+                                    name="expiryReminderDays"
+                                    value={settings.expiryReminderDays}
+                                    onChange={handleChange}
+                                    min="1"
+                                    className="block w-20 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                />
+                                <span className="text-sm font-medium text-gray-700">days before expiry.</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        )}
+                <div className="bg-gray-50 px-4 md:px-6 py-4 flex justify-end gap-3 border-t border-gray-100 sticky bottom-0">
+                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-blue-600 transition">Save</button>
+                </div>
+                </form>
+            )}
+            
+            {activeTab === 'security' && (
+                <SecurityTab userProfile={userProfile} />
+            )}
 
-        {activeTab === 'users' && isAdmin && (
-            <UserManagementTab adminId={userProfile.uid} companyName={userProfile.companyName} />
-        )}
+            {activeTab === 'data' && isAdmin && (
+                <div className="p-4 md:p-6 pt-4">
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-lg font-semibold text-brand-primary">Data Backup & Restore</h3>
+                            <p className="text-sm text-gray-500 mt-1">Save your data locally or restore from a file.</p>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                                <button 
+                                    type="button" 
+                                    onClick={onBackup}
+                                    className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                >
+                                    <DownloadIcon />
+                                    <span className="text-sm font-medium text-gray-700 mt-1">Backup to File</span>
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                                >
+                                    <UploadIcon />
+                                    <span className="text-sm font-medium text-gray-700 mt-1">Restore from File</span>
+                                </button>
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    accept=".json"
+                                    className="hidden" 
+                                />
+                            </div>
+                        </div>
+
+                        <hr className="border-gray-200" />
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-red-600">Data Cleanup</h3>
+                                <p className="text-sm text-gray-500 mt-1">Permanently delete specific data categories.</p>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <button type="button" onClick={() => handleClear('warranties')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                                    Clear All Warranties
+                                </button>
+                                <button type="button" onClick={() => handleClear('customers')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                                    Clear Customer List
+                                </button>
+                                <button type="button" onClick={() => handleClear('products')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                                    Clear Product Catalog
+                                </button>
+                                <button type="button" onClick={() => handleClear('services')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                                    Clear Service Catalog
+                                </button>
+                            </div>
+
+                            <div className="pt-4 mt-4 border-t border-gray-200">
+                                <h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
+                                <button type="button" onClick={() => handleClear('all')} className="w-full text-left px-4 py-3 border border-red-300 bg-red-50 rounded-md text-sm font-bold text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors mb-3">
+                                    Factory Reset (Clear All Data)
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={onDeleteAccount} 
+                                    className="w-full text-left px-4 py-3 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors shadow-sm"
+                                >
+                                    Delete Account Permanently
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'users' && isAdmin && (
+                <UserManagementTab adminId={userProfile.uid} companyName={userProfile.companyName} />
+            )}
+        </div>
       </div>
     </div>
   );
@@ -311,7 +317,7 @@ const SecurityTab: React.FC<{ userProfile: UserProfile }> = ({ userProfile }) =>
     };
 
     return (
-        <div className="p-6 pt-2">
+        <div className="p-4 md:p-6 pt-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Change Your Password</h3>
             <p className="text-sm text-gray-500 mb-4">
                 Update the password for your account (<span className="font-medium text-gray-700">{userProfile.email}</span>).
@@ -569,7 +575,7 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
     };
 
     return (
-        <div className="p-6 pt-2">
+        <div className="p-4 md:p-6 pt-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Manage Users</h3>
             <p className="text-sm text-gray-500 mb-4">
                 Create and manage accounts for your team.
@@ -616,7 +622,7 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
             {/* Change Password Modal */}
             {changePwdUser && (
                 <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center z-[60]" onClick={() => setChangePwdUser(null)}>
-                     <div className="bg-white p-5 rounded-lg shadow-lg max-w-sm w-full" onClick={e => e.stopPropagation()}>
+                     <div className="bg-white p-5 rounded-lg shadow-lg max-w-sm w-full m-4" onClick={e => e.stopPropagation()}>
                         <h4 className="text-lg font-bold mb-3">Change Password for {changePwdUser.username}</h4>
                         <form onSubmit={handleChangeSubUserPassword}>
                             {!changePwdUser.password && (
