@@ -16,8 +16,8 @@ import SettingsModal from './components/SettingsModal';
 import LoginPage from './components/LoginPage';
 import VerificationPendingScreen from './components/VerificationPendingScreen';
 import { auth, db } from './firebase';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { onAuthStateChanged, signOut, User, deleteUser } from 'firebase/auth';
+import { doc, onSnapshot, deleteDoc } from 'firebase/firestore';
 
 interface DashboardProps {
   user: User;
@@ -28,7 +28,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) => {
   // Use Firestore hooks
   const { warranties, loading: warrantiesLoading, addWarranty: addWarrantyToDb, updateWarranty: updateWarrantyInDb, deleteWarranty: deleteWarrantyFromDb, bulkDeleteWarranties, clearWarranties } = useWarranties(user.uid);
-  const { settings, updateSettings } = useSettings(user.uid);
+  const { settings, updateSettings, deleteSettings } = useSettings(user.uid);
   const { customers, addCustomer, updateCustomer, deleteCustomer, clearCustomers } = useCustomers(user.uid);
   const { savedProducts, addSavedProduct, updateSavedProduct, deleteSavedProduct, clearSavedProducts } = useSavedProducts(user.uid);
   const { savedServices, addSavedService, updateSavedService, deleteSavedService, clearSavedServices } = useSavedServices(user.uid);
@@ -238,6 +238,44 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
       }
   };
 
+  const handleDeleteAccount = async () => {
+    const confirm1 = window.confirm("DANGER: Are you sure you want to delete your account? This action is PERMANENT and cannot be undone.");
+    if (!confirm1) return;
+
+    const confirm2 = window.confirm("Please confirm again: All your warranties, customers, products, and account data will be deleted immediately.");
+    if (!confirm2) return;
+
+    try {
+        // 1. Clear all subcollections
+        await clearWarranties();
+        await clearCustomers();
+        await clearSavedProducts();
+        await clearSavedServices();
+        await deleteSettings();
+
+        // 2. Delete Company Registration (free up name)
+        if (companyName) {
+           const normalizedCompanyName = companyName.trim().toLowerCase();
+           await deleteDoc(doc(db, 'registered_companies', normalizedCompanyName));
+        }
+
+        // 3. Delete User Document
+        await deleteDoc(doc(db, 'users', user.uid));
+
+        // 4. Delete Auth User
+        await deleteUser(user);
+        
+        // Auth listener will redirect to login
+    } catch (error: any) {
+        console.error("Error deleting account:", error);
+        if (error.code === 'auth/requires-recent-login') {
+            alert("For security reasons, please sign out and sign in again before deleting your account.");
+        } else {
+            alert("Failed to delete account. Please try again or contact support.");
+        }
+    }
+  };
+
   const handleViewCustomerWarranties = (customerName: string) => {
       setSearchTerm(customerName);
       setCurrentView('warranties');
@@ -413,6 +451,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
             onSave={handleSaveSettings}
             onClose={handleCloseSettings}
             onClearData={handleClearData}
+            onDeleteAccount={handleDeleteAccount}
         />
       )}
       

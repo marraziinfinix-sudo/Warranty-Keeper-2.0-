@@ -96,7 +96,11 @@ export const useSettings = (userId: string) => {
         await setDoc(doc(db, 'users', userId, 'settings', 'general'), sanitize(newSettings), { merge: true });
     };
 
-    return { settings, updateSettings };
+    const deleteSettings = async () => {
+        await deleteDoc(doc(db, 'users', userId, 'settings', 'general'));
+    };
+
+    return { settings, updateSettings, deleteSettings };
 }
 
 export const useCustomers = (userId: string) => {

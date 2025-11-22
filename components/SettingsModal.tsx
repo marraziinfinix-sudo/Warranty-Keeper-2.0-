@@ -7,9 +7,10 @@ interface SettingsModalProps {
   onSave: (newSettings: AppSettings) => void;
   onClose: () => void;
   onClearData: (type: 'warranties' | 'customers' | 'products' | 'services' | 'all') => Promise<void>;
+  onDeleteAccount: () => Promise<void>;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, onClose, onClearData }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, onClose, onClearData, onDeleteAccount }) => {
   const [settings, setSettings] = useState<AppSettings>(currentSettings);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,6 +94,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ currentSettings, onSave, 
                         <button type="button" onClick={() => handleClear('all')} className="w-full text-left px-4 py-3 border border-red-300 bg-red-50 rounded-md text-sm font-bold text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
                             Factory Reset (Clear All Data)
                         </button>
+                        
+                        <div className="pt-4 mt-4 border-t border-gray-200">
+                            <p className="text-xs text-gray-400 mb-2 uppercase font-semibold tracking-wider">Danger Zone</p>
+                             <button 
+                                type="button" 
+                                onClick={onDeleteAccount} 
+                                className="w-full text-left px-4 py-3 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors shadow-sm"
+                            >
+                                Delete Account Permanently
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
