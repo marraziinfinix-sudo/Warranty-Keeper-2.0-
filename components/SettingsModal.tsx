@@ -4,7 +4,7 @@ import { AppSettings, UserProfile, SubUser } from '../types';
 import { DownloadIcon, UploadIcon, UsersIcon, PlusIcon, TrashIcon } from './icons/Icons';
 import { useSubUsers } from '../hooks/useFirestore';
 import { initializeApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signOut, sendEmailVerification } from 'firebase/auth';
 import { setDoc, doc, getDoc } from 'firebase/firestore';
 import { firebaseConfig, db } from '../firebase'; // Re-import config for secondary app
 
@@ -248,6 +248,7 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
             let userCred;
             try {
                 userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+                await sendEmailVerification(userCred.user);
             } catch (authErr: any) {
                 if (authErr.code === 'auth/email-already-in-use') {
                      throw new Error("This email address is already in use.");
@@ -282,7 +283,7 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
 
             setNewUserEmail('');
             setIsCreating(false);
-            alert(`User "${email}" created successfully with password "654321".`);
+            alert(`User "${email}" created successfully with password "654321". A verification email has been sent.`);
 
         } catch (err: any) {
             console.error(err);
