@@ -238,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
       }
   };
   
-  const handleBackup = () => {
+  const handleBackup = async () => {
       const backupData = {
           version: "1.0",
           timestamp: new Date().toISOString(),
@@ -249,13 +249,42 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, companyName }) =>
           settings
       };
       
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", `warranty_keeper_backup_${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(downloadAnchorNode); // required for firefox
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
+      const fileName = `warranty_keeper_backup_${new Date().toISOString().split('T')[0]}.json`;
+      const jsonString = JSON.stringify(backupData, null, 2);
+
+      try {
+        // @ts-ignore
+        if (window.showSaveFilePicker) {
+            // Use File System Access API if available to choose location
+             // @ts-ignore
+            const handle = await window.showSaveFilePicker({
+                suggestedName: fileName,
+                types: [{
+                    description: 'JSON Backup File',
+                    accept: { 'application/json': ['.json'] },
+                }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(jsonString);
+            await writable.close();
+        } else {
+            // Fallback for browsers that don't support picking location (browser settings dictate location)
+            const blob = new Blob([jsonString], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+      } catch (err: any) {
+          if (err.name !== 'AbortError') {
+             console.error("Backup failed:", err);
+             alert("An error occurred while creating the backup.");
+          }
+      }
   };
 
   const handleRestore = async (file: File) => {
