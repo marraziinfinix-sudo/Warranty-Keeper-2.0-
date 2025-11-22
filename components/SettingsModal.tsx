@@ -30,7 +30,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     onRestore
 }) => {
   const [settings, setSettings] = useState<AppSettings>(currentSettings);
-  const [activeTab, setActiveTab] = useState<'general' | 'users'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'users' | 'data'>('general');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = userProfile.role === 'admin';
@@ -86,16 +86,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {isAdmin && (
-            <div className="px-6 mb-4 border-b border-gray-200">
-                <div className="flex gap-4">
+            <div className="px-6 mb-4 border-b border-gray-200 overflow-x-auto">
+                <div className="flex gap-4 min-w-max">
                     <button 
-                        className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'general' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'general' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                         onClick={() => setActiveTab('general')}
                     >
                         General
                     </button>
                     <button 
-                         className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                         className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'data' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                        onClick={() => setActiveTab('data')}
+                    >
+                        Data Management
+                    </button>
+                    <button 
+                         className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'users' ? 'border-brand-primary text-brand-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                         onClick={() => setActiveTab('users')}
                     >
                         User Management
@@ -104,7 +110,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
         )}
 
-        {activeTab === 'general' ? (
+        {activeTab === 'general' && (
             <form onSubmit={handleSave}>
             <div className="p-6 pt-2">
                 <div className="space-y-6">
@@ -125,80 +131,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             <span className="text-sm font-medium text-gray-700">days before expiry.</span>
                         </div>
                     </div>
-
-                    {isAdmin && (
-                        <>
-                            <hr className="border-gray-200" />
-                            <div>
-                                <h3 className="text-lg font-semibold text-brand-primary">Data Backup & Restore</h3>
-                                <p className="text-sm text-gray-500 mt-1">Save your data locally or restore from a file.</p>
-                                
-                                <div className="grid grid-cols-2 gap-3 mt-3">
-                                    <button 
-                                        type="button" 
-                                        onClick={onBackup}
-                                        className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                                    >
-                                        <DownloadIcon />
-                                        <span className="text-sm font-medium text-gray-700 mt-1">Backup to File</span>
-                                    </button>
-                                    <button 
-                                        type="button" 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                                    >
-                                        <UploadIcon />
-                                        <span className="text-sm font-medium text-gray-700 mt-1">Restore from File</span>
-                                    </button>
-                                    <input 
-                                        type="file" 
-                                        ref={fileInputRef}
-                                        onChange={handleFileChange}
-                                        accept=".json"
-                                        className="hidden" 
-                                    />
-                                </div>
-                            </div>
-
-                            <hr className="border-gray-200" />
-                            
-                            <div className="space-y-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-red-600">Data Management</h3>
-                                    <p className="text-sm text-gray-500 mt-1">Manage your stored data.</p>
-                                </div>
-                                
-                                <div className="space-y-3">
-                                    <button type="button" onClick={() => handleClear('warranties')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
-                                        Clear All Warranties
-                                    </button>
-                                    <button type="button" onClick={() => handleClear('customers')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
-                                        Clear Customer List
-                                    </button>
-                                    <button type="button" onClick={() => handleClear('products')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
-                                        Clear Product Catalog
-                                    </button>
-                                    <button type="button" onClick={() => handleClear('services')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
-                                        Clear Service Catalog
-                                    </button>
-                                    <button type="button" onClick={() => handleClear('all')} className="w-full text-left px-4 py-3 border border-red-300 bg-red-50 rounded-md text-sm font-bold text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                                        Factory Reset (Clear All Data)
-                                    </button>
-                                    
-                                    <div className="pt-4 mt-4 border-t border-gray-200">
-                                        <p className="text-xs text-gray-400 mb-2 uppercase font-semibold tracking-wider">Danger Zone</p>
-                                        <button 
-                                            type="button" 
-                                            onClick={onDeleteAccount} 
-                                            className="w-full text-left px-4 py-3 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors shadow-sm"
-                                        >
-                                            Delete Account Permanently
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
                 </div>
             </div>
             <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
@@ -206,7 +138,84 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 <button type="submit" className="px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-blue-600 transition">Save</button>
             </div>
             </form>
-        ) : (
+        )}
+
+        {activeTab === 'data' && (
+             <div className="p-6 pt-2">
+                <div className="space-y-6">
+                    <div>
+                        <h3 className="text-lg font-semibold text-brand-primary">Data Backup & Restore</h3>
+                        <p className="text-sm text-gray-500 mt-1">Save your data locally or restore from a file.</p>
+                        
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                            <button 
+                                type="button" 
+                                onClick={onBackup}
+                                className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                            >
+                                <DownloadIcon />
+                                <span className="text-sm font-medium text-gray-700 mt-1">Backup to File</span>
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                            >
+                                <UploadIcon />
+                                <span className="text-sm font-medium text-gray-700 mt-1">Restore from File</span>
+                            </button>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept=".json"
+                                className="hidden" 
+                            />
+                        </div>
+                    </div>
+
+                    <hr className="border-gray-200" />
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="text-lg font-semibold text-red-600">Data Cleanup</h3>
+                            <p className="text-sm text-gray-500 mt-1">Permanently delete specific data categories.</p>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <button type="button" onClick={() => handleClear('warranties')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                                Clear All Warranties
+                            </button>
+                            <button type="button" onClick={() => handleClear('customers')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                                Clear Customer List
+                            </button>
+                            <button type="button" onClick={() => handleClear('products')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                                Clear Product Catalog
+                            </button>
+                            <button type="button" onClick={() => handleClear('services')} className="w-full text-left px-4 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-danger transition-colors">
+                                Clear Service Catalog
+                            </button>
+                        </div>
+
+                        <div className="pt-4 mt-4 border-t border-gray-200">
+                             <h3 className="text-lg font-semibold text-red-700 mb-2">Danger Zone</h3>
+                            <button type="button" onClick={() => handleClear('all')} className="w-full text-left px-4 py-3 border border-red-300 bg-red-50 rounded-md text-sm font-bold text-red-700 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors mb-3">
+                                Factory Reset (Clear All Data)
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={onDeleteAccount} 
+                                className="w-full text-left px-4 py-3 bg-red-600 text-white rounded-md text-sm font-bold hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors shadow-sm"
+                            >
+                                Delete Account Permanently
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {activeTab === 'users' && (
             <UserManagementTab adminId={userProfile.uid} companyName={userProfile.companyName} />
         )}
       </div>
