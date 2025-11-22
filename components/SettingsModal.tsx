@@ -245,6 +245,7 @@ const SecurityTab: React.FC<{ userProfile: UserProfile }> = ({ userProfile }) =>
     const [loading, setLoading] = useState(false);
     const [showCurrent, setShowCurrent] = useState(false);
     const [showNew, setShowNew] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -365,13 +366,22 @@ const SecurityTab: React.FC<{ userProfile: UserProfile }> = ({ userProfile }) =>
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
-                    <input 
-                        type="password" 
-                        required 
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
-                    />
+                    <div className="relative mt-1">
+                        <input 
+                            type={showConfirm ? "text" : "password"} 
+                            required 
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            className="block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-primary focus:border-brand-primary sm:text-sm pr-10"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirm(!showConfirm)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                        >
+                            {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="pt-2">
