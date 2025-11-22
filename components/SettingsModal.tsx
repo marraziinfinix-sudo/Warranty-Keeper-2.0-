@@ -202,7 +202,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
             </div>
             <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
-                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">Cancel</button>
+                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition">Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-brand-primary text-white rounded-md hover:bg-blue-600 transition">Save</button>
             </div>
             </form>
@@ -222,7 +222,7 @@ interface UserManagementTabProps {
 const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyName }) => {
     const { subUsers, deleteSubUser } = useSubUsers(adminId);
     const [isCreating, setIsCreating] = useState(false);
-    const [newUser, setNewUser] = useState({ username: '', password: '' });
+    const [newUserEmail, setNewUserEmail] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -231,59 +231,47 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
         setError('');
         setLoading(true);
         
-        const username = newUser.username.trim().toLowerCase();
-        const password = newUser.password;
+        const email = newUserEmail.trim().toLowerCase();
+        const password = "654321";
 
-        if (username.length < 3) {
-            setError("Username must be at least 3 characters.");
-            setLoading(false);
-            return;
-        }
-        if (password.length < 6) {
-            setError("Password must be at least 6 characters.");
+        if (!email.includes('@')) {
+            setError("Username must be a valid email address.");
             setLoading(false);
             return;
         }
 
         try {
-            // 1. Check username uniqueness
-            const usernameRef = doc(db, 'usernames', username);
-            const usernameSnap = await getDoc(usernameRef);
-            if (usernameSnap.exists()) {
-                throw new Error("Username is already taken.");
-            }
-            
-            // Generate a unique internal email for Auth
-            const cleanCompanyName = companyName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            const fakeEmail = `${username}@${cleanCompanyName}.warrantykeeper.internal`;
-
-            // 2. Create User in Firebase Auth (using secondary app to avoid logging out admin)
+            // 1. Create User in Firebase Auth (using secondary app to avoid logging out admin)
             const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
             const secondaryAuth = getAuth(secondaryApp);
-            const userCred = await createUserWithEmailAndPassword(secondaryAuth, fakeEmail, password);
+            
+            let userCred;
+            try {
+                userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+            } catch (authErr: any) {
+                if (authErr.code === 'auth/email-already-in-use') {
+                     throw new Error("This email address is already in use.");
+                }
+                throw authErr;
+            }
+            
             const newUid = userCred.user.uid;
             
-            // 3. Create User Profile
+            // 2. Create User Profile
             await setDoc(doc(db, 'users', newUid), {
-                username: username,
-                email: fakeEmail, // Store fake email for reference
+                username: email,
+                email: email,
                 companyName: companyName,
                 role: 'user',
                 parentId: adminId,
                 createdAt: new Date().toISOString()
             });
 
-            // 4. Create Username mapping
-            await setDoc(usernameRef, {
-                email: fakeEmail,
-                uid: newUid
-            });
-
-            // 5. Add to Sub-user list for Admin
+            // 3. Add to Sub-user list for Admin
             await setDoc(doc(db, 'users', adminId, 'sub_users', newUid), {
                 uid: newUid,
-                username: username,
-                displayName: username,
+                username: email,
+                displayName: email,
                 createdAt: new Date().toISOString()
             });
 
@@ -292,9 +280,9 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
             // Ideally deleteApp(secondaryApp) but Firebase JS SDK doesn't export it easily in v9 modular without full import. 
             // It's fine to leave instance for session or let it GC.
 
-            setNewUser({ username: '', password: '' });
+            setNewUserEmail('');
             setIsCreating(false);
-            alert(`User "${username}" created successfully.`);
+            alert(`User "${email}" created successfully with password "654321".`);
 
         } catch (err: any) {
             console.error(err);
@@ -315,27 +303,18 @@ const UserManagementTab: React.FC<UserManagementTabProps> = ({ adminId, companyN
                     {error && <p className="text-xs text-red-600 mb-2">{error}</p>}
                     <form onSubmit={handleCreateUser} className="space-y-3">
                         <div>
-                            <label className="block text-xs font-medium text-gray-700">Username</label>
+                            <label className="block text-xs font-medium text-gray-700">User Email (Username)</label>
                             <input 
-                                type="text" 
+                                type="email" 
                                 required 
-                                value={newUser.username}
-                                onChange={e => setNewUser({...newUser, username: e.target.value})}
+                                value={newUserEmail}
+                                onChange={e => setNewUserEmail(e.target.value)}
                                 className="mt-1 block w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm focus:ring-brand-primary focus:border-brand-primary"
-                                placeholder="john_doe"
+                                placeholder="user@example.com"
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-700">Password</label>
-                            <input 
-                                type="text" 
-                                required 
-                                minLength={6}
-                                value={newUser.password}
-                                onChange={e => setNewUser({...newUser, password: e.target.value})}
-                                className="mt-1 block w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm focus:ring-brand-primary focus:border-brand-primary"
-                                placeholder="******"
-                            />
+                        <div className="bg-blue-50 p-2 rounded text-xs text-blue-800 border border-blue-100">
+                            <strong>Note:</strong> The default password will be set to <code>654321</code>.
                         </div>
                         <div className="flex gap-2 mt-2">
                             <button type="submit" disabled={loading} className="px-3 py-1.5 bg-brand-primary text-white text-xs font-bold rounded hover:bg-blue-600 disabled:opacity-50">
